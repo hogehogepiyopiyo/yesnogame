@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Yes/No クイズ</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 0 10px;
+    }
+    h1 {
+      text-align: center;
+    }
+    #room-info {
+      margin-bottom: 10px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      font-size: 0.9rem;
+    }
+    #room-url {
+      cursor: pointer;
+      text-decoration: underline;
+      word-break: break-all;
+    }
+    #name-area {
+      margin: 10px 0;
+      padding: 8px;
+      border: 1px solid #ccc;
+      font-size: 0.9rem;
+    }
+    #name-input {
+      padding: 4px;
+      font-size: 1rem;
+      width: 200px;
+    }
+    #log {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 400px;
+      overflow-y: auto;
+      background: #fafafa;
+      margin-bottom: 10px;
+      white-space: pre-wrap;
+    }
+#log-toolbar {
+  display: flex;
+  flex-direction: column;   /* 縦並びにする */
+  align-items: flex-end;    /* 右寄せにする */
+  margin-bottom: 4px;
+  gap: 4px;                 /* ボタンとテキストの縦の間隔 */
+  font-size: 0.85rem;
+}
+
+    .btn-copy {
+      background: #eee8ff;
+      border-color: #aa88ff;
+    }
+    .msg {
+      margin-bottom: 6px;
+    }
+    .msg-me {
+      color: #0044aa; /* 自分（青系） */
+    }
+    .msg-other {
+      color: #aa6600; /* 他人（オレンジ系） */
+    }
+    .msg-bot {
+      color: #004422;
+      background: #e5f5e5;
+      border-left: 4px solid #66aa66;
+      padding: 6px 8px;
+      border-radius: 4px;
+    }
+    .bot-name {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .bot-body {
+      font-size: 0.95rem;
+    }
+    .bot-line {
+      margin: 1px 0;
+    }
+    .bot-tag-line {
+      margin: 2px 0;
+    }
+    .bot-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      margin-right: 6px;
+      background: #ffffff;
+      border: 1px solid #cccccc;
+      vertical-align: middle;
+    }
+    .bot-tag-mvp {
+      border-color: #e6a700;
+    }
+    .bot-tag-point {
+      border-color: #0088cc;
+    }
+    .bot-tag-text {
+      vertical-align: middle;
+    }
+    #form {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    #input {
+      flex: 1;
+      padding: 8px;
+      font-size: 1rem;
+    }
+    .btn {
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+    }
+    .btn-question {
+      background: #e0f0ff;
+      border-color: #66a3ff;
+    }
+    .btn-answer {
+      background: #ffe0f0;
+      border-color: #ff66a3;
+    }
+    small {
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>Yes/No クイズ</h1>
+
+  <div id="room-info">
+    <div>部屋ID: <strong id="room-id"></strong></div>
+    <div>
+      このURLを友だちに送ると、同じ部屋で一緒にプレイできます：<br />
+      <span id="room-url"></span><br />
+      <small>（クリックでURLをコピーしようとします）</small>
+    </div>
+  </div>
+
+  <div id="name-area">
+    <div>
+      あなたの名前:
+      <input id="name-input" type="text" placeholder="例: 太郎" />
+      <button id="name-save-btn" type="button">名前を保存</button>
+    </div>
+    <small>※ 同じ部屋の他の人からは、その名前で表示されます。</small>
+  </div>
+
+  <div id="log-toolbar">
+    <button id="copy-log-btn" type="button" class="btn btn-copy">
+      チャットを全コピー
+    </button>
+    <small>（全てのチャット内容をクリップボードにコピーします）</small>
+  </div>
+
+
+  <div id="log"></div>
+
+  <form id="form">
+    <input
+      id="input"
+      type="text"
+      placeholder="メッセージを入力（テーマ番号・質問・解答など）"
+      autocomplete="off"
+    />
+    <button type="submit" class="btn btn-question" id="ask-btn">質問を送信</button>
+    <button type="button" class="btn btn-answer" id="answer-btn">回答を送信</button>
+  </form>
+
+  <script>
+    const log = document.getElementById("log");
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const askBtn = document.getElementById("ask-btn");
+    const answerBtn = document.getElementById("answer-btn");
+    const copyLogBtn = document.getElementById("copy-log-btn");
+
+    const roomIdSpan = document.getElementById("room-id");
+    const roomUrlSpan = document.getElementById("room-url");
+
+    const nameInput = document.getElementById("name-input");
+    const nameSaveBtn = document.getElementById("name-save-btn");
+
+    // ==== 部屋ID（URLの ?room=xxxx を利用） ====
+    function getRoomId() {
+      const url = new URL(window.location.href);
+      let room = url.searchParams.get("room");
+      if (!room) {
+        room = Math.random().toString(36).slice(2, 8);
+        url.searchParams.set("room", room);
+        window.history.replaceState({}, "", url);
+      }
+      return room;
+    }
+
+    const roomId = getRoomId();
+    roomIdSpan.textContent = roomId;
+    roomUrlSpan.textContent = window.location.href;
+
+    roomUrlSpan.addEventListener("click", () => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard
+          .writeText(window.location.href)
+          .then(() => {
+            alert("URLをコピーしました！");
+          })
+          .catch(() => {
+            alert("コピーに失敗しました。手動で選択してコピーしてください。");
+          });
+      }
+    });
+
+    // 同じ部屋IDを sessionId としてサーバーに渡す
+    let sessionId = "room-" + roomId;
+
+    // ==== ユーザー名の管理 ====
+    const LOCAL_STORAGE_KEY = "yesno-quiz-username";
+
+    function loadMyName() {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) return saved;
+      // なければ仮の名前をつくる
+      const temp = "ゲスト" + Math.floor(Math.random() * 1000);
+      localStorage.setItem(LOCAL_STORAGE_KEY, temp);
+      return temp;
+    }
+
+    let myName = loadMyName();
+    nameInput.value = myName;
+
+    nameSaveBtn.addEventListener("click", () => {
+      const val = nameInput.value.trim();
+      if (!val) {
+        alert("名前を入力してください。");
+        return;
+      }
+      myName = val;
+      localStorage.setItem(LOCAL_STORAGE_KEY, myName);
+      alert("名前を「" + myName + "」に設定しました。");
+    });
+
+    // ==== 初期のGPTメッセージ（固定文言） ====
+    function renderInitialThemeMessage() {
+      log.innerHTML = "";
+      const div = document.createElement("div");
+      div.classList.add("msg", "msg-bot");
+      div.textContent =
+        "どのテーマで遊びますか？\n\n" +
+        "1: 国連加盟国の国名\n" +
+        "2: 日本のG1出走経験がある競走馬名\n" +
+        "3: 日本の中央重賞出走経験がある競走馬名\n\n" +
+        "遊びたいテーマの番号を送信してください。";
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // ==== GPTメッセージ整形（MVP / POINT をアイコン風に） ====
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function formatBotMessage(text) {
+      const lines = text.split(/\r?\n/);
+      const htmlLines = lines
+        .map((line) => {
+          const raw = line.trim();
+          if (!raw) return "";
+          if (/^MVP[:：]/.test(raw)) {
+            const body = escapeHtml(raw.replace(/^MVP[:：]\s*/, ""));
+            return (
+              '<div class="bot-tag-line">' +
+              '<span class="bot-tag bot-tag-mvp">🏆 MVP</span>' +
+              '<span class="bot-tag-text">' +
+              body +
+              "</span></div>"
+            );
+          }
+          if (/^POINT[:：]/.test(raw)) {
+            const body = escapeHtml(raw.replace(/^POINT[:：]\s*/, ""));
+            return (
+              '<div class="bot-tag-line">' +
+              '<span class="bot-tag bot-tag-point">💡 POINT</span>' +
+              '<span class="bot-tag-text">' +
+              body +
+              "</span></div>"
+            );
+          }
+          return '<div class="bot-line">' + escapeHtml(raw) + "</div>";
+        })
+        .filter(Boolean);
+      return htmlLines.join("");
+    }
+
+    // ==== チャットログの描画 ====
+    function renderLog(messages) {
+      log.innerHTML = "";
+      messages.forEach((msg) => {
+        const div = document.createElement("div");
+        div.classList.add("msg");
+
+        if (msg.type === "gpt") {
+          div.classList.add("msg-bot");
+          div.innerHTML =
+            '<div class="bot-name">GPT</div>' +
+            '<div class="bot-body">' +
+            formatBotMessage(msg.text) +
+            "</div>";
+        } else if (msg.type === "user") {
+          if (msg.name === myName) {
+            // 自分の発言
+            div.classList.add("msg-me");
+            div.textContent = "あなた: " + msg.text;
+          } else {
+            // 他のユーザーの発言
+            div.classList.add("msg-other");
+            div.textContent = "#" + msg.name + ": " + msg.text;
+          }
+        } else {
+          div.textContent = msg.text;
+        }
+
+        log.appendChild(div);
+      });
+      log.scrollTop = log.scrollHeight;
+    }
+
+    async function fetchLogAndRender() {
+      try {
+        const res = await fetch(
+          "/api/log?sessionId=" + encodeURIComponent(sessionId)
+        );
+        const data = await res.json();
+        if (data.sessionId) {
+          sessionId = data.sessionId;
+        }
+        if (Array.isArray(data.messages)) {
+          if (data.messages.length === 0) {
+            // まだ誰も発言していない部屋なら、固定のテーマ案内メッセージを表示
+            renderInitialThemeMessage();
+          } else {
+            renderLog(data.messages);
+          }
+        }
+      } catch (err) {
+        console.error("ログ取得エラー:", err);
+      }
+    }
+
+    // ==== サーバーへの送信 ====
+    async function sendToServer(message, kind) {
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            message,
+            name: myName,
+            kind: kind || "question",
+          }),
+        });
+
+        const data = await res.json();
+        if (data.error) {
+          const div = document.createElement("div");
+          div.classList.add("msg", "msg-bot");
+          div.textContent = "エラー: " + data.error;
+          log.appendChild(div);
+          log.scrollTop = log.scrollHeight;
+        } else {
+          if (data.sessionId) {
+            sessionId = data.sessionId;
+          }
+          // 送信後、最新ログを取得して描画
+          await fetchLogAndRender();
+        }
+      } catch (err) {
+        console.error(err);
+        const div = document.createElement("div");
+        div.classList.add("msg", "msg-bot");
+        div.textContent = "通信エラーが発生しました。";
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+      }
+    }
+
+    // フォーム（Enter）で送信 → デフォルトは「質問」
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      sendToServer(text, "question");
+    });
+
+    // ボタン: 質問を送信
+    askBtn.addEventListener("click", () => {
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      sendToServer(text, "question");
+    });
+
+    // ボタン: 回答を送信
+    answerBtn.addEventListener("click", () => {
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      sendToServer(text, "answer");
+    });
+
+    // ==== チャット全体をコピー ====
+    copyLogBtn.addEventListener("click", () => {
+      const text = log.innerText || "";
+      if (!text.trim()) {
+        alert("コピーするチャットがありません。");
+        return;
+      }
+
+      // クリップボードAPIが使える場合
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            alert("チャット全体をコピーしました。");
+          })
+          .catch(() => {
+            alert("コピーに失敗しました。ブラウザの設定を確認してください。");
+          });
+      } else {
+        // 古いブラウザ向けの簡易フォールバック
+        const temp = document.createElement("textarea");
+        temp.value = text;
+        temp.style.position = "fixed";
+        temp.style.left = "-9999px";
+        document.body.appendChild(temp);
+        temp.select();
+        try {
+          document.execCommand("copy");
+          alert("チャット全体をコピーしました。");
+        } catch (e) {
+          alert("コピーに失敗しました。手動で選択してコピーしてください。");
+        }
+        document.body.removeChild(temp);
+      }
+    });
+
+
+
+    // ページ読み込み時
+    window.addEventListener("load", async () => {
+      // まずは現在の部屋のログを確認
+      await fetchLogAndRender();
+
+      // その後、1秒ごとにログを更新（他の人の発言も反映される）
+      setInterval(fetchLogAndRender, 1000);
+    });
+  </script>
+</body>
+</html>
+
+
