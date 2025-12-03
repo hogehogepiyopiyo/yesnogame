@@ -10,7 +10,7 @@
       max-width: 800px;
       margin: 20px auto;
       padding: 0 10px;
-      background: #ffffff; /* ← 白に戻した */
+      background: #ffffff;
     }
     h1 {
       text-align: center;
@@ -187,7 +187,7 @@
         gap: 6px;
         position: sticky;
         bottom: 0;
-        background: #ffffff; /* ← ここも白に */
+        background: #ffffff;
         padding-top: 4px;
       }
       #input {
@@ -333,6 +333,7 @@
         "3: 日本の中央重賞出走経験がある競走馬名\n\n" +
         "遊びたいテーマの番号を送信してください。";
       log.appendChild(div);
+      // 初回だけは一番下にスクロール
       log.scrollTop = log.scrollHeight;
     }
 
@@ -378,6 +379,12 @@
 
     // ==== チャットログの描画 ====
     function renderLog(messages) {
+      // いまユーザーがどのあたりを見ているかチェック
+      const prevScrollTop = log.scrollTop;
+      const prevScrollHeight = log.scrollHeight;
+      const isAtBottom =
+        prevScrollHeight - (prevScrollTop + log.clientHeight) < 10;
+
       log.innerHTML = "";
       messages.forEach((msg) => {
         const div = document.createElement("div");
@@ -418,7 +425,17 @@
 
         log.appendChild(div);
       });
-      log.scrollTop = log.scrollHeight;
+
+      const newScrollHeight = log.scrollHeight;
+
+      if (isAtBottom) {
+        // 一番下を見ていた場合だけ、自動で最下部までスクロール
+        log.scrollTop = newScrollHeight;
+      } else {
+        // 過去ログを見ている場合は、位置をできるだけ維持
+        const delta = newScrollHeight - prevScrollHeight;
+        log.scrollTop = prevScrollTop + delta;
+      }
     }
 
     async function fetchLogAndRender() {
