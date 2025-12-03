@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yes/No クイズ</title>
   <style>
     body {
@@ -9,15 +10,19 @@
       max-width: 800px;
       margin: 20px auto;
       padding: 0 10px;
+      background: #ffffff; /* ← 白に戻した */
     }
     h1 {
       text-align: center;
+      margin: 6px 0 10px;
     }
     #room-info {
       margin-bottom: 10px;
       padding: 8px;
       border: 1px solid #ccc;
       font-size: 0.9rem;
+      background: #fff;
+      border-radius: 6px;
     }
     #room-url {
       cursor: pointer;
@@ -29,11 +34,14 @@
       padding: 8px;
       border: 1px solid #ccc;
       font-size: 0.9rem;
+      background: #fff;
+      border-radius: 6px;
     }
     #name-input {
       padding: 4px;
       font-size: 1rem;
       width: 200px;
+      max-width: 100%;
     }
     #log {
       border: 1px solid #ccc;
@@ -43,15 +51,16 @@
       background: #fafafa;
       margin-bottom: 10px;
       white-space: pre-wrap;
+      border-radius: 6px;
     }
-#log-toolbar {
-  display: flex;
-  flex-direction: column;   /* 縦並びにする */
-  align-items: flex-end;    /* 右寄せにする */
-  margin-bottom: 4px;
-  gap: 4px;                 /* ボタンとテキストの縦の間隔 */
-  font-size: 0.85rem;
-}
+    #log-toolbar {
+      display: flex;
+      flex-direction: column;   /* 縦並びにする */
+      align-items: flex-end;    /* 右寄せにする */
+      margin-bottom: 4px;
+      gap: 4px;                 /* ボタンとテキストの縦の間隔 */
+      font-size: 0.85rem;
+    }
 
     .btn-copy {
       background: #eee8ff;
@@ -59,6 +68,7 @@
     }
     .msg {
       margin-bottom: 6px;
+      font-size: 0.95rem;
     }
     .msg-me {
       color: #0044aa; /* 自分（青系） */
@@ -115,11 +125,15 @@
       display: flex;
       gap: 8px;
       align-items: center;
+      margin-top: 4px;
     }
     #input {
       flex: 1;
       padding: 8px;
       font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background: #fff;
     }
     .btn {
       padding: 8px 12px;
@@ -128,6 +142,7 @@
       border-radius: 4px;
       border: 1px solid #ccc;
       background: #f5f5f5;
+      white-space: nowrap;
     }
     .btn-question {
       background: #e0f0ff;
@@ -143,6 +158,51 @@
     }
     small {
       color: #666;
+    }
+
+    /* ===== スマホ向けレイアウト（幅600px以下） ===== */
+    @media (max-width: 600px) {
+      body {
+        padding: 6px;
+        margin: 0 auto;
+        font-size: 14px;
+      }
+      h1 {
+        font-size: 1.3rem;
+        margin: 4px 0 8px;
+      }
+      #room-info,
+      #name-area {
+        font-size: 0.8rem;
+        padding: 6px;
+        margin-bottom: 8px;
+      }
+      #log {
+        height: 55vh;  /* 画面高さの半分ちょっとをチャットに */
+        font-size: 0.9rem;
+      }
+      #form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        position: sticky;
+        bottom: 0;
+        background: #ffffff; /* ← ここも白に */
+        padding-top: 4px;
+      }
+      #input {
+        width: 100%;
+      }
+      .btn {
+        width: 100%;
+        text-align: center;
+        font-size: 0.95rem;
+        padding: 10px 12px;
+      }
+      #log-toolbar {
+        align-items: flex-end;
+        font-size: 0.8rem;
+      }
     }
   </style>
 </head>
@@ -162,7 +222,7 @@
     <div>
       あなたの名前:
       <input id="name-input" type="text" placeholder="例: 太郎" />
-      <button id="name-save-btn" type="button">名前を保存</button>
+      <button id="name-save-btn" type="button" class="btn">名前を保存</button>
     </div>
     <small>※ 同じ部屋の参加者には、ここで設定した名前が表示されます。</small>
   </div>
@@ -173,7 +233,6 @@
     </button>
     <small>（全てのチャット内容をクリップボードにコピー）</small>
   </div>
-
 
   <div id="log"></div>
 
@@ -197,7 +256,6 @@
     const answerBtn = document.getElementById("answer-btn");
     const copyLogBtn = document.getElementById("copy-log-btn");
     const talkBtn = document.getElementById("talk-btn");
-
 
     const roomIdSpan = document.getElementById("room-id");
     const roomUrlSpan = document.getElementById("room-url");
@@ -306,7 +364,7 @@
             const body = escapeHtml(raw.replace(/^POINT[:：]\s*/, ""));
             return (
               '<div class="bot-tag-line">' +
-              '<span class="bot-tag bot-tag-point">💡 </span>' +
+              '<span class="bot-tag bot-tag-point">💡 POINT</span>' +
               '<span class="bot-tag-text">' +
               body +
               "</span></div>"
@@ -362,7 +420,6 @@
       });
       log.scrollTop = log.scrollHeight;
     }
-
 
     async function fetchLogAndRender() {
       try {
@@ -457,7 +514,6 @@
       sendToServer(text, "free"); // kind = "free" でサーバーに送る
     });
 
-
     // ==== チャット全体をコピー ====
     copyLogBtn.addEventListener("click", () => {
       const text = log.innerText || "";
@@ -494,8 +550,6 @@
       }
     });
 
-
-
     // ページ読み込み時
     window.addEventListener("load", async () => {
       // まずは現在の部屋のログを確認
@@ -507,5 +561,3 @@
   </script>
 </body>
 </html>
-
-
