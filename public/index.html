@@ -131,6 +131,10 @@
       background: #ffe0f0;
       border-color: #ff66a3;
     }
+    .btn-talk {
+      background: #f0ffe0;
+      border-color: #a3d966;
+    }
     small {
       color: #666;
     }
@@ -171,11 +175,12 @@
     <input
       id="input"
       type="text"
-      placeholder="メッセージを入力（テーマ番号・質問・解答など）"
+      placeholder="メッセージを入力（質問・解答・ユーザーとの相談など）"
       autocomplete="off"
     />
     <button type="submit" class="btn btn-question" id="ask-btn">質問を送信</button>
     <button type="button" class="btn btn-answer" id="answer-btn">解答を送信</button>
+    <button type="button" class="btn btn-talk" id="talk-btn">相談チャット</button>
   </form>
 
   <script>
@@ -185,6 +190,8 @@
     const askBtn = document.getElementById("ask-btn");
     const answerBtn = document.getElementById("answer-btn");
     const copyLogBtn = document.getElementById("copy-log-btn");
+    const talkBtn = document.getElementById("talk-btn");
+
 
     const roomIdSpan = document.getElementById("room-id");
     const roomUrlSpan = document.getElementById("room-url");
@@ -293,7 +300,7 @@
             const body = escapeHtml(raw.replace(/^POINT[:：]\s*/, ""));
             return (
               '<div class="bot-tag-line">' +
-              '<span class="bot-tag bot-tag-point">💡 POINT</span>' +
+              '<span class="bot-tag bot-tag-point">💡 </span>' +
               '<span class="bot-tag-text">' +
               body +
               "</span></div>"
@@ -423,6 +430,15 @@
       sendToServer(text, "answer");
     });
 
+    // ボタン: 相談チャット（GPTには送らない）
+    talkBtn.addEventListener("click", () => {
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      sendToServer(text, "free"); // kind = "free" でサーバーに送る
+    });
+
+
     // ==== チャット全体をコピー ====
     copyLogBtn.addEventListener("click", () => {
       const text = log.innerText || "";
@@ -472,5 +488,4 @@
   </script>
 </body>
 </html>
-
 

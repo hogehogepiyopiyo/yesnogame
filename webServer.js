@@ -17,7 +17,7 @@ app.use(express.static("public"));
 
 /**
  * 部屋ごとのチャットログ
- * roomId(=sessionId) -> [{ type: "user"|"gpt", name: "名前", text: "本文", kind?: "question"|"answer", timestamp: number }, ...]
+ * roomId(=sessionId) -> [{ type: "user"|"gpt", name: "名前", text: "本文", kind?: "question"|"answer"|"free", timestamp: number }, ...]
  */
 const roomLogs = new Map();
 
@@ -43,7 +43,16 @@ app.post("/api/chat", async (req, res) => {
     // 部屋ID（セッションID）がない場合は仮のID
     const sid = sessionId || "default-room";
     const userName = name && String(name).trim() ? String(name).trim() : "名無し";
-    const msgKind = kind === "answer" ? "answer" : "question";
+
+    // kind の正規化（question / answer / free）
+    let msgKind;
+    if (kind === "answer") {
+      msgKind = "answer";
+    } else if (kind === "free") {
+      msgKind = "free";
+    } else {
+      msgKind = "question";
+    }
 
     // この部屋のログを取得
     const logs = getRoomLog(sid);
@@ -57,10 +66,15 @@ app.post("/api/chat", async (req, res) => {
       timestamp: Date.now(),
     });
 
-    // 2. GPTに問い合わせ（質問か解答かを渡す）
+    // 2. 「相談チャット」の場合は GPT には送らず、ここで終了
+    if (msgKind === "free") {
+      return res.json({ sessionId: sid });
+    }
+
+    // 3. GPTに問い合わせ（質問か解答かを渡す）
     const reply = await chatWithGameMaster(sid, message, msgKind);
 
-    // 3. GPTの返答をログに追加
+    // 4. GPTの返答をログに追加
     logs.push({
       type: "gpt",
       name: "GPT",
