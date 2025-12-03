@@ -66,6 +66,12 @@
     .msg-other {
       color: #aa6600; /* 他人（オレンジ系） */
     }
+    .msg-free {
+      background: #fff8e1;           /* 薄いクリーム色の背景 */
+      border-left: 3px solid #ffb300;/* 左に黄色い線 */
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
     .msg-bot {
       color: #004422;
       background: #e5f5e5;
@@ -320,6 +326,7 @@
         div.classList.add("msg");
 
         if (msg.type === "gpt") {
+          // GPTのメッセージ
           div.classList.add("msg-bot");
           div.innerHTML =
             '<div class="bot-name">GPT</div>' +
@@ -327,16 +334,27 @@
             formatBotMessage(msg.text) +
             "</div>";
         } else if (msg.type === "user") {
-          if (msg.name === myName) {
-            // 自分の発言
+          // ユーザーのメッセージ（質問・回答・相談チャットを含む）
+          const isMe = msg.name === myName;
+          const displayName = isMe ? "あなた" : "#" + msg.name;
+
+          // デフォルトの色付け（自分: 青 / 他人: オレンジ）
+          if (isMe) {
             div.classList.add("msg-me");
-            div.textContent = "あなた: " + msg.text;
           } else {
-            // 他のユーザーの発言
             div.classList.add("msg-other");
-            div.textContent = "#" + msg.name + ": " + msg.text;
           }
+
+          // 相談チャットなら [相談] ラベルと装飾を追加
+          let label = "";
+          if (msg.kind === "free") {
+            label = " [相談]";
+            div.classList.add("msg-free");
+          }
+
+          div.textContent = `${displayName}${label}: ${msg.text}`;
         } else {
+          // その他（念のため）
           div.textContent = msg.text;
         }
 
@@ -344,6 +362,7 @@
       });
       log.scrollTop = log.scrollHeight;
     }
+
 
     async function fetchLogAndRender() {
       try {
@@ -488,4 +507,5 @@
   </script>
 </body>
 </html>
+
 
