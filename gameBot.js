@@ -8,7 +8,9 @@ const client = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-const MODEL = "qwen/qwen3-32b";
+//export 付
+export const MODEL = "qwen/qwen3-32b";
+
 
 // ★ ここがゲームのルール（SYSTEM_PROMPT）
 const SYSTEM_PROMPT = String.raw`
@@ -335,5 +337,6 @@ export async function chatWithGameMaster(
 
   return cleanedContent;
 }
+
 
 

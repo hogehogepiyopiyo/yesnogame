@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
-import { chatWithGameMaster } from "./gameBot.js";
+import { chatWithGameMaster, MODEL } from "./gameBot.js";
 
 dotenv.config();
 
@@ -30,6 +30,15 @@ function getRoomLog(roomId) {
   }
   return roomLogs.get(roomId);
 }
+
+
+// 追加：現在利用中のモデル名を返すAPI
+app.get("/api/model", (req, res) => {
+  res.json({ model: MODEL });
+});
+
+
+
 
 // チャット送信用API
 app.post("/api/chat", async (req, res) => {
@@ -143,3 +152,5 @@ app.get("/api/log", (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });
+
+

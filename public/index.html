@@ -440,7 +440,7 @@
 </p>
         <p></p>
         <p><strong>▼ AIに質問するときのヒント</strong></p>
-<p>AIのモデルは、” <strong>llama-3.3-70b-versatile</strong> ”です。だいぶうっかりさんです。<br>よくうそをついちゃうので、質問するときは気を遣ってあげてね。</p>
+<p>AIのモデルは、” <strong id="model-name">（取得中）</strong> ”です。だいぶうっかりさんです。<br>よくうそをついちゃうので、質問するときは気を遣ってあげてね。</p>
 <p>質問文のコツ（検証中）
 <ul>
 <li>質問・回答・ユーザーチャットの送信ボタンを正しく使う</li>
@@ -486,6 +486,8 @@
     const answerBtn = document.getElementById("answer-btn");
     const copyLogBtn = document.getElementById("copy-log-btn");
     const talkBtn = document.getElementById("talk-btn");
+
+   const modelNameSpan = document.getElementById("model-name"); // ← 追加
 
     const errorBanner = document.getElementById("error-banner");
     const errorMessageSpan = document.getElementById("error-message");
@@ -582,7 +584,7 @@ function setupDetailsOpenState() {
 
 
 
-    // ==== エラーメッセージ表示/非表示 ==== 
+    // ==== エラーメッセージ表示/非表示 ====
     function showError(message) {
       if (!message) return;
       errorMessageSpan.textContent = message;
@@ -856,6 +858,8 @@ function setupDetailsOpenState() {
         return;
       }
 
+
+
       // クリップボードAPIが使える場合
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard
@@ -884,17 +888,39 @@ function setupDetailsOpenState() {
       }
     });
 
+    // ==== モデル名の取得 ====
+    async function fetchModelName() {
+      if (!modelNameSpan) return;
+
+      try {
+        const res = await fetch("/api/model");
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (data && data.model) {
+          modelNameSpan.textContent = data.model;
+        }
+      } catch (e) {
+        console.error("モデル名取得エラー:", e);
+        // 失敗時は初期表示のままでもOK
+      }
+    }
+
     // ページ読み込み時
     window.addEventListener("load", async () => {
-      // まずは現在の部屋のログを確認
+      // まずモデル名を取得して「操作方法」欄に反映
+      await fetchModelName();
+
+      // そのあと現在の部屋のログを確認
       await fetchLogAndRender();
 
       // その後、1秒ごとにログを更新（他の人の発言も反映される）
       setInterval(fetchLogAndRender, 1000);
     });
+
+
   </script>
 </body>
 </html>
-
 
 
