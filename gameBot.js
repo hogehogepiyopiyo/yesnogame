@@ -8,13 +8,18 @@ const client = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
+const MODEL = "qwen/qwen3-32b";
+
 // ★ ここがゲームのルール（SYSTEM_PROMPT）
-// （中身はこれまで使っていた3つのテーマ対応プロンプトと同じです）
-const SYSTEM_PROMPT = `
+const SYSTEM_PROMPT = String.raw`
 # あなたの役割
 
 あなたはマルチテーマ対応の yes/no クイズゲーム「Yes/No マルチテーママスター」です。
 グループチャット内の複数ユーザーと、次のルールに従ってゲームを進行します。
+
+重要: あなたは思考過程を外部に表示してはいけません。
+<think> や </think> を含むテキストを出力してはいけません。
+ユーザーに見せるべき最終的な回答のみを出力してください。
 
 ================================
 ■ ゲームの目的
@@ -137,7 +142,7 @@ const SYSTEM_PROMPT = `
     例: 「G1を6勝以上しているか？」という質問に「いいえ」と答えていた場合、
         豆知識で「G1を6勝しました」と書いてはいけない。
   - G1勝利数や三冠達成など、その回の質問で直接扱われた重要な事実については、
-    正確さに自信がない限り、具体的な数字や「唯一」「史上初」などの強い表現を避ける。
+    正確さに自信がない限り、具体的な数字や「唯一」「史上初」などの強い断定表現を避ける。
     代わりに「G1を複数勝利した名牝です」のような、安全な表現を用いてよい。
 
 - その後、次のゲームに進むかを質問する。
@@ -168,10 +173,10 @@ const SYSTEM_PROMPT = `
   POINT: [その質問の良かった点の説明]
 
 フォーマットに関する制約:
-- 'MVP:' の行は、必ず「MVP: 」から始め、そのあとに MVP 質問を全角の二重引用符「」で囲んで書く。
+- MVP: の行は、必ず「MVP: 」から始め、そのあとに MVP 質問を全角の二重引用符「」で囲んで書く。
   例: MVP: 「有馬記念で1着になったことがある？」
-- 'POINT:' の行は、必ず「POINT: 」から始め、そのあとにその質問の良かった点を1〜2文で説明する。
-- 'MVP:' や 'POINT:' の前後に別のラベル（「ベスト質問」や「良かった点」など）を付け加えてはいけない。
+- POINT: の行は、必ず「POINT: 」から始め、そのあとにその質問の良かった点を1〜2文で説明する。
+- MVP: や POINT: の前後に別のラベル（「ベスト質問」や「良かった点」など）を付け加えてはいけない。
 - index.html 側では、行頭が「MVP:」「POINT:」の行を特別なスタイルで装飾するため、
   行頭の文字列は **正確に** 「MVP:」「POINT:」とすること。
 
@@ -227,7 +232,8 @@ const SYSTEM_PROMPT = `
 ● 競走馬名当て（テーマ2・3）
 - 解答候補は、実在した・または実在する競走馬とする。架空の馬名は使わない。
 - 特に日本の中央競馬（JRA）のレースに出走歴がある馬から選ぶ。
-- テーマ (2) は「G1出走馬」に限定するため比較的有名な馬から選ぶ。
+- テーマ(2)の「G1」レース、テーマ(3)の「中央重賞（G1～G3）」は、1984年にJRAがグレード制を導入後のレースを指すものとする。
+- テーマ (2) は「G1出走馬」に限定するため、「正解」として選定した競走馬のG1レース出走歴と、該当レースの着順について、客観的な事実に基づいて回答する。
 - テーマ (3) は「中央重賞（G1〜G3）出走馬」全体から選ぶが、あまりにもマイナーすぎる馬は避け、
   一般の競馬ファンが連想できそうなレベルの馬から選ぶ。
 - 競走馬に関する yes/no を答えるとき、特に以下の重要な事実について、推測での断定は禁止する。必ず情報を確認し、整合性をとってから回答する。
@@ -257,16 +263,27 @@ const SYSTEM_PROMPT = `
   プレイヤー同士の会話を見ていたかのように振る舞ってはいけない。
 `;
 
-
 // セッションごとに会話履歴を保存（サーバー起動中のみ保持する簡易版）
 const sessions = new Map();
+
+/**
+ * LLM の出力から <think>〜</think> ブロックを削除するユーティリティ
+ */
+function stripThinkTags(text) {
+  if (!text) return "";
+  return text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+}
 
 /**
  * sessionId: 部屋ID（例: "room-abc123"）
  * userText: ユーザーからのメッセージ
  * kind: "question" | "answer"
  */
-export async function chatWithGameMaster(sessionId, userText, kind = "question") {
+export async function chatWithGameMaster(
+  sessionId,
+  userText,
+  kind = "question"
+) {
   // 初回はゲーム開始の説明から
   if (!sessions.has(sessionId)) {
     const initialMessages = [
@@ -275,19 +292,24 @@ export async function chatWithGameMaster(sessionId, userText, kind = "question")
     ];
 
     const initRes = await client.chat.completions.create({
-      // Groq の  チャットモデル（日本語も対応）
-      model: "qwen/qwen3-32b",
+      model: MODEL,
       messages: initialMessages,
     });
 
     const initReply = initRes.choices[0].message;
-    initialMessages.push(initReply);
+    const cleanedInitContent = stripThinkTags(initReply.content || "");
+    const cleanedInitReply = {
+      ...initReply,
+      content: cleanedInitContent,
+    };
+
+    initialMessages.push(cleanedInitReply);
     sessions.set(sessionId, initialMessages);
   }
 
   const messages = sessions.get(sessionId);
 
-  // 質問か解答かで、軽くラベルを付ける（トークン増加はごくわずか）
+  // 質問か解答かでラベルを付ける
   let content = userText;
   if (kind === "answer") {
     content = `【これはプレイヤーの解答です】${userText}`;
@@ -298,16 +320,20 @@ export async function chatWithGameMaster(sessionId, userText, kind = "question")
   messages.push({ role: "user", content });
 
   const res = await client.chat.completions.create({
-      model: "qwen/qwen3-32b",
+    model: MODEL,
     messages,
   });
 
   const reply = res.choices[0].message;
-  messages.push(reply);
+  const cleanedContent = stripThinkTags(reply.content || "");
+  const assistantMessage = {
+    ...reply,
+    content: cleanedContent,
+  };
 
-  return reply.content;
+  messages.push(assistantMessage);
+
+  return cleanedContent;
 }
-
-
 
 

@@ -26,6 +26,7 @@
   /* PC デフォルトでは #page は普通のブロック要素 */
   #page {
     /* スマホでのみ flex にする（後述の @media 内で上書き） */
+  display: block;
   }
 
   /* ===== モバイルメニュー（設定／操作方法） ===== */
@@ -609,6 +610,20 @@ function setupDetailsOpenState() {
       log.scrollTop = log.scrollHeight;
     }
 
+    // ==== GPTからの <think> ブロックを除去 ====
+    function stripThinkTags(text) {
+      if (!text) return "";
+      return text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+
     // ==== GPTメッセージ整形（MVP / POINT をアイコン風に） ====
     function escapeHtml(str) {
       return str
@@ -618,7 +633,10 @@ function setupDetailsOpenState() {
     }
 
     function formatBotMessage(text) {
-      const lines = text.split(/\r?\n/);
+      // まず <think>〜</think> を削除してから行ごとに処理
+      const cleaned = stripThinkTags(text || "");
+      const lines = cleaned.split(/\r?\n/);
+
       const htmlLines = lines
         .map((line) => {
           const raw = line.trim();
@@ -648,6 +666,8 @@ function setupDetailsOpenState() {
         .filter(Boolean);
       return htmlLines.join("");
     }
+
+
 
     // ==== チャットログの描画 ====
     function renderLog(messages) {
@@ -875,5 +895,6 @@ function setupDetailsOpenState() {
   </script>
 </body>
 </html>
+
 
 
