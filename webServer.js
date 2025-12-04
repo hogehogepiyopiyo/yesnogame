@@ -42,7 +42,8 @@ app.post("/api/chat", async (req, res) => {
 
     // 部屋ID（セッションID）がない場合は仮のID
     const sid = sessionId || "default-room";
-    const userName = name && String(name).trim() ? String(name).trim() : "名無し";
+    const userName =
+      name && String(name).trim() ? String(name).trim() : "名無し";
 
     // kind の正規化（question / answer / free）
     let msgKind;
@@ -85,8 +86,44 @@ app.post("/api/chat", async (req, res) => {
     // レスポンス（必要最低限）
     res.json({ reply, sessionId: sid });
   } catch (err) {
-    console.error("サーバーでエラー発生:", err);
-    res.status(500).json({ error: "サーバー側でエラーが発生しました。" });
+    console.error("サーバーでエラー発生 ----------------------");
+
+    let statusCode = 500;
+    let clientErrorCode = "server_error";
+    let clientMessage = "サーバー側でエラーが発生しました。";
+
+    if (err instanceof Error) {
+      console.error("エラーメッセージ:", err.message);
+      console.error("スタックトレース:", err.stack);
+
+      // Groq のレートリミット（429）を検出
+      if (err.message.includes("Rate limit reached")) {
+        statusCode = 429;
+        clientErrorCode = "rate_limit";
+        clientMessage =
+          "現在、外部AIサービスの利用上限に達しています。しばらく時間をおいてから再度お試しください。";
+      }
+    } else {
+      console.error("Error オブジェクトではない値:", err);
+    }
+
+    if (err && err.response) {
+      try {
+        console.error("HTTPステータス:", err.response.status);
+        console.error("レスポンスヘッダ:", err.response.headers);
+        console.error("レスポンスボディ:", err.response.data);
+      } catch (e) {
+        console.error("err.response のログ出力中にエラー:", e);
+      }
+    }
+
+    console.error("リクエストボディ:", req.body);
+    console.error("------------------------------------------");
+
+    res.status(statusCode).json({
+      error: clientErrorCode,
+      message: clientMessage,
+    });
   }
 });
 

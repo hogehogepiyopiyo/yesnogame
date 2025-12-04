@@ -160,6 +160,21 @@
       color: #666;
     }
 
+    /* ==== エラーバナー ==== */
+    #error-banner {
+      display: none;
+      margin: 8px 0;
+      padding: 8px 10px;
+      border-radius: 4px;
+      background: #ffe6e6;
+      border: 1px solid #ff5c5c;
+      color: #b30000;
+      font-size: 0.9rem;
+    }
+    #error-banner strong {
+      margin-right: 6px;
+    }
+
     /* ===== スマホ向けレイアウト（幅600px以下） ===== */
     @media (max-width: 600px) {
       body {
@@ -206,8 +221,16 @@
     }
   </style>
 </head>
+
+
 <body>
   <h1>Yes/No クイズ</h1>
+
+  <!-- エラーメッセージ表示用 -->
+  <div id="error-banner">
+    <strong>エラー</strong><span id="error-message"></span>
+  </div>
+
 
   <div id="room-info">
     <div>部屋ID: <strong id="room-id"></strong></div>
@@ -256,6 +279,9 @@
     const answerBtn = document.getElementById("answer-btn");
     const copyLogBtn = document.getElementById("copy-log-btn");
     const talkBtn = document.getElementById("talk-btn");
+
+    const errorBanner = document.getElementById("error-banner");
+    const errorMessageSpan = document.getElementById("error-message");
 
     const roomIdSpan = document.getElementById("room-id");
     const roomUrlSpan = document.getElementById("room-url");
@@ -320,6 +346,18 @@
       localStorage.setItem(LOCAL_STORAGE_KEY, myName);
       alert("名前を「" + myName + "」に設定しました。");
     });
+
+    // ==== エラーメッセージ表示/非表示 ==== 
+    function showError(message) {
+      if (!message) return;
+      errorMessageSpan.textContent = message;
+      errorBanner.style.display = "block";
+    }
+
+    function clearError() {
+      errorBanner.style.display = "none";
+      errorMessageSpan.textContent = "";
+    }
 
     // ==== 初期のGPTメッセージ（固定文言） ====
     function renderInitialThemeMessage() {
@@ -463,6 +501,8 @@
     // ==== サーバーへの送信 ====
     async function sendToServer(message, kind) {
       try {
+        clearError(); // 新しい送信のたびに前回のエラーを消す
+
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -474,29 +514,52 @@
           }),
         });
 
-        const data = await res.json();
-        if (data.error) {
-          const div = document.createElement("div");
-          div.classList.add("msg", "msg-bot");
-          div.textContent = "エラー: " + data.error;
-          log.appendChild(div);
-          log.scrollTop = log.scrollHeight;
-        } else {
-          if (data.sessionId) {
-            sessionId = data.sessionId;
-          }
-          // 送信後、最新ログを取得して描画
-          await fetchLogAndRender();
+        // レスポンスボディを JSON として読みにいく（エラー時もメッセージを取りたいので）
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (e) {
+          // JSON で返ってこない場合もあるので、そのときは空オブジェクトのまま
+          console.error("JSON パースエラー:", e);
         }
+
+        // HTTPステータスコードがエラーの場合
+        if (!res.ok) {
+          // サーバー側でセットしたエラーコード/メッセージを優先的に使う
+          if (data && data.error === "rate_limit") {
+            // レートリミット専用メッセージ
+            showError(
+              data.message ||
+                "現在、外部AIサービスの利用上限に達しています。しばらく時間をおいてから再度お試しください。"
+            );
+          } else if (data && data.message) {
+            showError(data.message);
+          } else {
+            // 汎用的なエラー
+            showError("サーバー側でエラーが発生しました。時間をおいて再度お試しください。");
+          }
+          return;
+        }
+
+        // ここに来るのは res.ok === true のとき（200番台）
+        if (data.error) {
+          // 200だけど error フィールドがある特殊ケースに備えて
+          showError(data.message || "サーバー側でエラーが発生しました。");
+          return;
+        }
+
+        // 正常系：セッションID更新 & ログ再取得
+        if (data.sessionId) {
+          sessionId = data.sessionId;
+        }
+
+        await fetchLogAndRender();
       } catch (err) {
         console.error(err);
-        const div = document.createElement("div");
-        div.classList.add("msg", "msg-bot");
-        div.textContent = "通信エラーが発生しました。";
-        log.appendChild(div);
-        log.scrollTop = log.scrollHeight;
+        showError("通信エラーが発生しました。ネットワーク環境を確認してください。");
       }
     }
+
 
     // フォーム（Enter）で送信 → デフォルトは「質問」
     form.addEventListener("submit", (e) => {
@@ -578,3 +641,5 @@
   </script>
 </body>
 </html>
+
+
