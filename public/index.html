@@ -373,6 +373,7 @@
   <h1>Yes/No クイズ</h1>
 
 
+
   <!-- エラーメッセージ表示用 -->
   <div id="error-banner">
     <strong>エラー</strong><span id="error-message"></span>
@@ -472,6 +473,17 @@
         「架空のキャラクターですか？」のように、別の角度から聞き直してみる。</small>
       </li>
     </ul>
+
+<p id="uma">🐎 うまぴょいモードのコツ</p>
+
+
+    <ul>
+      <li>ウマ娘に実装されているキャラクターのモデルとなった競走馬のみ出題されます。</li>
+      <li> ウマ娘のキャラクターに基づいた質問もOK<br>
+        <small>OK：公式プロフィールレベルの一般的に知られている設定<br>
+	NG：二次創作的イメージ・特定イベント・スキル構成などの詳細な情報</small></li>
+	<li>ウマ娘／競走馬のどちらを指しているか、AIがわかりやすいように記載する<br>
+<small>「オルフェーヴル（ウマ娘）」「オルフェーヴル（競走馬）」といった記載がおすすめ</small></li>
   </div>
 </details>
   </div>
@@ -493,9 +505,10 @@
     <button type="button" class="btn btn-talk" id="talk-btn">相談</button>
     </div>
   </form>
-
-
   </div>
+
+
+  
   <!-- ここまでを page で囲む -->
 
   <script>
@@ -617,20 +630,23 @@ function setupDetailsOpenState() {
     }
 
     // ==== 初期のGPTメッセージ（固定文言） ====
-    function renderInitialThemeMessage() {
-      log.innerHTML = "";
-      const div = document.createElement("div");
-      div.classList.add("msg", "msg-bot");
-      div.textContent =
-        "どのテーマで遊びますか？\n\n" +
-        "1: 国連加盟国の国名\n" +
-        "2: 日本のG1出走経験がある競走馬名\n" +
-        "3: 日本の中央重賞出走経験がある競走馬名\n\n" +
-        "遊びたいテーマの番号を送信してください。";
-      log.appendChild(div);
-      // 初回だけは一番下にスクロール
-      log.scrollTop = log.scrollHeight;
-    }
+function renderInitialThemeMessage() {
+  log.innerHTML = "";
+  const div = document.createElement("div");
+  div.classList.add("msg", "msg-bot");
+
+  div.innerHTML =
+    "どのテーマで遊びますか？<br><br>" +
+    "1: 国連加盟国の国名<br>" +
+    "2: 日本のG1出走経験がある競走馬名<br>" +
+    "3: 日本の中央重賞出走経験がある競走馬名<br>" +
+    "4: うまぴょいモード（<a href=\"#uma\">ルールを確認</a>）<br><br>" +
+    "遊びたいテーマの番号を送信してください。";
+
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
 
     // ==== GPTからの <think> ブロックを除去 ====
     function stripThinkTags(text) {
@@ -941,8 +957,14 @@ function setupDetailsOpenState() {
 
   </script>
 </body>
-</html>
 
+         <footer>
+
+       <small>このサイトは「ウマ娘 プリティーダービー」の二次創作サイトです。<br>
+株式会社Cygamesとは一切関係ございません。<small>
+  </footer>
+
+</html>
 
 
 
