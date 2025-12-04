@@ -5,266 +5,372 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yes/No クイズ</title>
   <style>
-    html,
-    body {
-      height: 100%;
-    }
+  html,
+  body {
+    height: 100%;
+  }
 
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 0 10px;
+    background: #ffffff;
+  }
+
+  h1 {
+    text-align: center;
+    margin: 6px 0 10px;
+  }
+
+  /* PC デフォルトでは #page は普通のブロック要素 */
+  #page {
+    /* スマホでのみ flex にする（後述の @media 内で上書き） */
+  }
+
+  /* ===== モバイルメニュー（設定／操作方法） ===== */
+  #mobile-menus {
+    margin-bottom: 8px;
+  }
+
+  #settings-details,
+  #howto-details {
+    margin-bottom: 6px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+  }
+
+  #settings-summary,
+  #howto-details > summary {
+    padding: 6px 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    list-style: none;
+  }
+
+  #settings-summary::-webkit-details-marker,
+  #howto-details > summary::-webkit-details-marker {
+    display: none; /* ブラウザデフォルトの > アイコンを消す */
+  }
+
+  #settings-body,
+  #howto-body {
+    padding: 4px 8px 8px;
+    border-top: 1px solid #eee;
+  }
+
+  /* ===== 部屋情報 ===== */
+  #room-info {
+    margin-bottom: 10px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    font-size: 0.9rem;
+    background: #fff;
+    border-radius: 6px;
+  }
+
+  #room-url {
+    cursor: pointer;
+    text-decoration: underline;
+    word-break: break-all;
+  }
+
+  /* ===== 名前ブロック（入力＋ボタンを横並び） ===== */
+  #name-area {
+    margin: 10px 0;
+    padding: 8px;
+    border: 1px solid #ccc;
+    font-size: 0.9rem;
+    background: #fff;
+    border-radius: 6px;
+  }
+
+  #name-area-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  #name-input {
+    padding: 4px;
+    font-size: 1rem;
+    width: 200px;
+    max-width: 100%;
+    flex: 1;
+    min-width: 0;
+  }
+
+  #name-save-btn {
+    white-space: nowrap;
+  }
+
+  /* ===== チャットログ ===== */
+
+  /* PC デフォルトでは高さ 400px のチャット領域 */
+  #log {
+    border: 1px solid #ccc;
+    padding: 10px;
+    height: 400px;
+    overflow-y: auto;
+    background: #fafafa;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+    border-radius: 6px;
+  }
+
+  #log-toolbar {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-bottom: 4px;
+    gap: 4px;
+    font-size: 0.85rem;
+  }
+
+  .btn-copy {
+    background: #f7f4ff;
+    border-color: #c4b1ff;
+    font-size: 0.8rem;
+    padding: 4px 8px;
+  }
+
+  /* ===== メッセージ ===== */
+  .msg {
+    margin-bottom: 6px;
+    font-size: 0.95rem;
+  }
+
+  .msg-me {
+    color: #0044aa; /* 自分（青系） */
+  }
+
+  .msg-other {
+    color: #aa6600; /* 他人（オレンジ系） */
+  }
+
+  .msg-free {
+    background: #fff8e1;           /* 薄いクリーム色の背景 */
+    border-left: 3px solid #ffb300;/* 左に黄色い線 */
+    padding: 2px 4px;
+    border-radius: 3px;
+  }
+
+  .msg-bot {
+    color: #004422;
+    background: #e5f5e5;
+    border-left: 4px solid #66aa66;
+    padding: 6px 8px;
+    border-radius: 4px;
+  }
+
+  .bot-name {
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+
+  .bot-body {
+    font-size: 0.95rem;
+  }
+
+  .bot-line {
+    margin: 1px 0;
+  }
+
+  .bot-tag-line {
+    margin: 2px 0;
+  }
+
+  .bot-tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 999px;
+    margin-right: 6px;
+    background: #ffffff;
+    border: 1px solid #cccccc;
+    vertical-align: middle;
+  }
+
+  .bot-tag-mvp {
+    border-color: #e6a700;
+  }
+
+  .bot-tag-point {
+    border-color: #0088cc;
+  }
+
+  .bot-tag-text {
+    vertical-align: middle;
+  }
+
+  /* ===== 入力フォーム／ボタン ===== */
+  #form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 4px;
+  }
+
+  #input {
+    flex: 1;
+    padding: 8px;
+    font-size: 1rem;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background: #fff;
+  }
+
+  .btn {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background: #f5f5f5;
+    white-space: nowrap;
+    color: #333;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .btn-question {
+    background: #e0f0ff;
+    border-color: #66a3ff;
+  }
+
+  .btn-answer {
+    background: #ffe0f0;
+    border-color: #ff66a3;
+  }
+
+  .btn-talk {
+    background: #f0ffe0;
+    border-color: #a3d966;
+  }
+
+  /* 質問／解答／相談ボタンを横並びにする行 */
+  #button-row {
+    display: flex;
+    gap: 4px;
+  }
+
+  #button-row .btn {
+    flex: 1;
+    width: auto; /* flex ベースに任せる */
+  }
+
+  small {
+    color: #666;
+  }
+
+  /* ==== エラーバナー ==== */
+  #error-banner {
+    display: none;
+    margin: 8px 0;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background: #ffe6e6;
+    border: 1px solid #ff5c5c;
+    color: #b30000;
+    font-size: 0.9rem;
+  }
+
+  #error-banner strong {
+    margin-right: 6px;
+  }
+
+  /* ===== スマホ向けレイアウト（幅600px以下） ===== */
+  @media (max-width: 600px) {
     body {
-      font-family: system-ui, sans-serif;
-      max-width: 800px;
-      margin: 20px auto;
-      padding: 0 10px;
-      background: #ffffff;
+      padding: 4px 6px;
+      margin: 0 auto;
+      font-size: 14px;
     }
 
     h1 {
-      text-align: center;
-      margin: 6px 0 10px;
+      font-size: 1.2rem;
+      margin: 4px 0 4px;
     }
-    #room-info {
-      margin-bottom: 10px;
-      padding: 8px;
-      border: 1px solid #ccc;
-      font-size: 0.9rem;
-      background: #fff;
-      border-radius: 6px;
-    }
-    #room-url {
-      cursor: pointer;
-      text-decoration: underline;
-      word-break: break-all;
-    }
+
+    #room-info,
     #name-area {
-      margin: 10px 0;
-      padding: 8px;
-      border: 1px solid #ccc;
-      font-size: 0.9rem;
-      background: #fff;
-      border-radius: 6px;
-    }
-    #name-input {
-      padding: 4px;
-      font-size: 1rem;
-      width: 200px;
-      max-width: 100%;
+      font-size: 0.8rem;
+      padding: 4px 6px;
+      margin-bottom: 6px;
     }
 
-    /* PC デフォルトでは #page は普通のブロック要素 */
+    /* スマホのときだけ、ページ全体を縦方向 flex にする */
     #page {
-      /* min-height や flex は付けない */
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
 
-    /* PC デフォルトでは高さ 400px のチャット領域 */
+    /* ログは「余った高さ全部」を使う。PC の height:400px を上書き */
     #log {
-      border: 1px solid #ccc;
-      padding: 10px;
-      height: 400px;
-      overflow-y: auto;
-      background: #fafafa;
-      margin-bottom: 10px;
-      white-space: pre-wrap;
-      border-radius: 6px;
+      flex: 1;
+      min-height: 0;
+      height: auto;
+      font-size: 0.9rem;
+    }
+
+    #form {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      position: sticky;
+      bottom: 0;
+      background: #ffffff;
+      padding: 4px 4px 6px;
+      box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.06); /* 上側にごく薄い影 */
+    }
+
+    /* スマホでは「入力欄の下に横3つ」 */
+    #form .btn {
+      flex: 1;
+    }
+
+    #input {
+      width: 100%;
+    }
+
+    .btn {
+      width: 100%;        /* 1カラム配置時用（button-row の中では width:auto に上書き） */
+      text-align: center;
+      font-size: 0.9rem;
+      padding: 8px 12px;
+    }
+
+    #button-row .btn {
+      font-size: 0.9rem;
+      padding: 8px 4px;
+      width: auto;        /* 横3つで均等 */
     }
 
     #log-toolbar {
-      display: flex;
-      flex-direction: column;   /* 縦並びにする */
-      align-items: flex-end;    /* 右寄せにする */
-      margin-bottom: 4px;
-      gap: 4px;                 /* ボタンとテキストの縦の間隔 */
-      font-size: 0.85rem;
+      align-items: flex-end;
+      font-size: 0.8rem;
     }
 
-    .btn-copy {
-      background: #eee8ff;
-      border-color: #aa88ff;
-    }
-    .msg {
-      margin-bottom: 6px;
-      font-size: 0.95rem;
-    }
-    .msg-me {
-      color: #0044aa; /* 自分（青系） */
-    }
-    .msg-other {
-      color: #aa6600; /* 他人（オレンジ系） */
-    }
-    .msg-free {
-      background: #fff8e1;           /* 薄いクリーム色の背景 */
-      border-left: 3px solid #ffb300;/* 左に黄色い線 */
-      padding: 2px 4px;
-      border-radius: 3px;
-    }
-    .msg-bot {
-      color: #004422;
-      background: #e5f5e5;
-      border-left: 4px solid #66aa66;
-      padding: 6px 8px;
-      border-radius: 4px;
-    }
-    .bot-name {
-      font-weight: bold;
-      margin-bottom: 4px;
-    }
-    .bot-body {
-      font-size: 0.95rem;
-    }
-    .bot-line {
-      margin: 1px 0;
-    }
-    .bot-tag-line {
-      margin: 2px 0;
-    }
-    .bot-tag {
-      display: inline-block;
-      font-size: 0.75rem;
-      padding: 2px 6px;
-      border-radius: 999px;
-      margin-right: 6px;
-      background: #ffffff;
-      border: 1px solid #cccccc;
-      vertical-align: middle;
-    }
-    .bot-tag-mvp {
-      border-color: #e6a700;
-    }
-    .bot-tag-point {
-      border-color: #0088cc;
-    }
-    .bot-tag-text {
-      vertical-align: middle;
-    }
-    #form {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-top: 4px;
-    }
-    #input {
-      flex: 1;
-      padding: 8px;
-      font-size: 1rem;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      background: #fff;
-    }
-    .btn {
-      padding: 8px 12px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      background: #f5f5f5;
-      white-space: nowrap;
-    }
-    .btn-question {
-      background: #e0f0ff;
-      border-color: #66a3ff;
-    }
-    .btn-answer {
-      background: #ffe0f0;
-      border-color: #ff66a3;
-    }
-    .btn-talk {
-      background: #f0ffe0;
-      border-color: #a3d966;
-    }
-    small {
-      color: #666;
-    }
-
-    /* ==== エラーバナー ==== */
-    #error-banner {
+    #log-toolbar small {
       display: none;
-      margin: 8px 0;
-      padding: 8px 10px;
-      border-radius: 4px;
-      background: #ffe6e6;
-      border: 1px solid #ff5c5c;
-      color: #b30000;
-      font-size: 0.9rem;
-    }
-    #error-banner strong {
-      margin-right: 6px;
     }
 
-     /* ===== スマホ向けレイアウト（幅600px以下） ===== */
-    @media (max-width: 600px) {
-      body {
-        padding: 4px 6px;
-        margin: 0 auto;
-        font-size: 14px;
-      }
-
-      h1 {
-        font-size: 1.2rem;
-        margin: 4px 0 4px;
-      }
-
-      #room-info,
-      #name-area {
-        font-size: 0.8rem;
-        padding: 4px 6px;
-        margin-bottom: 6px;
-      }
-
-      /* スマホのときだけ、ページ全体を縦方向 flex にする */
-      #page {
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-      }
-
-      /* ログは「余った高さ全部」を使う。PC の height:400px を上書き */
-      #log {
-        flex: 1;
-        min-height: 0;
-        height: auto;
-        font-size: 0.9rem;
-      }
-
-      #form {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 6px;
-        position: sticky;
-        bottom: 0;
-        background: #ffffff;
-        padding: 4px 4px 6px;
-        box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.06); /* 上側にごく薄い影 */
-      }
-
-      #input {
-        width: 100%;
-      }
-
-      .btn {
-        width: 100%;
-        text-align: center;
-        font-size: 0.95rem;
-        padding: 10px 12px;
-      }
-
-      #log-toolbar {
-        align-items: flex-end;
-        font-size: 0.8rem;
-      }
-
-      #log-toolbar small {
-        display: none;
-      }
+    /* 部屋IDと名前ブロックの説明テキストはスマホでは非表示 */
+    #room-info small,
+    #name-area small {
+      display: none;
     }
-
-
-
-
+  }
   </style>
 </head>
 
 
 <body>
   <h1>Yes/No クイズ</h1>
+
 
   <!-- エラーメッセージ表示用 -->
   <div id="error-banner">
@@ -275,6 +381,20 @@
   <!-- ここからpageで囲む -->
   <div id="page">
 
+
+  <!-- スマホ用 上部メニュー（PCでは見た目だけ変える想定） -->
+  <div id="mobile-menus">
+    <!-- 設定パネル -->
+    <details id="settings-details">
+      <summary id="settings-summary">
+        部屋ID: <strong><span id="summary-room-id">----</span></strong>
+        / 名前: <strong><span id="summary-name">----</span></strong>
+        / 設定 <strong>▼</strong>
+      </summary>
+
+      <div id="settings-body">
+
+
   <div id="room-info">
     <div>部屋ID: <strong id="room-id"></strong></div>
     <div>
@@ -284,11 +404,12 @@
     </div>
   </div>
 
+
   <div id="name-area">
-    <div>
-      あなたの名前:
+    <div id="name-area-main">
+      <span>名前:</span>
       <input id="name-input" type="text" placeholder="例: 太郎" />
-      <button id="name-save-btn" type="button" class="btn">名前を保存</button>
+      <button id="name-save-btn" type="button" class="btn">保存</button>
     </div>
     <small>※ 同じ部屋の参加者に表示されます。</small>
   </div>
@@ -300,6 +421,41 @@
     <small>（チャットログをクリップボードにコピー）</small>
   </div>
 
+      </div>
+    </details>
+
+    <!-- 操作方法パネル -->
+    <details id="howto-details">
+      <summary>操作方法とヒント <strong>▼</strong></summary>
+      <div id="howto-body">
+        <p><ul>
+<li>遊ぶテーマの番号を送信するとスタート</li>
+<li>「質問」ボタン：はい/いいえで答えられる質問を送信</li>
+<li>「解答」ボタン：正解だと思う単語を送信</li>
+<li>「相談」ボタン：同じ部屋の参加者だけでチャットしたいときは「相談」ボタンで送信<br>
+（相談ボタンで送信すると、GPTはその内容を無視します）</li>
+        <li>MVP / POINT：GPTが特に良かった質問やポイントをタグ付きで表示します。</li>
+
+</p>
+        <p></p>
+        <p><strong>▼ AIに質問するときのヒント</strong></p>
+<p>AIのモデルは、” <strong>llama-3.3-70b-versatile</strong> ”です。だいぶうっかりさんです。<br>よくうそをついちゃうので、質問するときは気を遣ってあげてね。</p>
+<p>質問文のコツ（検証中）
+<ul>
+<li>文末を「～ですか？」「～がありますか？」に統一<br>（「～ではありませんか？」みたいな否定疑問文は苦手）</li>
+<li>なるべく正式名称を用いる<br>（俗称や略語は誤解されたり理解できないかも）</li>
+<li>曖昧な言葉や主観的な表現を避ける<br>（「最近」「たまに」みたいな言葉は解釈がブレやすい）</li>
+<li>一度に質問する内容は1つだけにする<br>（条件を細分化すると矛盾が起こりにくい）</li>
+</ul>
+
+</p>
+
+      </div>
+    </details>
+  </div>
+
+
+
   <div id="log"></div>
 
   <form id="form">
@@ -309,9 +465,11 @@
       placeholder="メッセージを入力（質問・解答・ユーザーとの相談など）"
       autocomplete="off"
     />
-    <button type="submit" class="btn btn-question" id="ask-btn">質問を送信</button>
-    <button type="button" class="btn btn-answer" id="answer-btn">解答を送信</button>
-    <button type="button" class="btn btn-talk" id="talk-btn">相談チャット</button>
+    <div id="button-row">
+    <button type="submit" class="btn btn-question" id="ask-btn">質問</button>
+    <button type="button" class="btn btn-answer" id="answer-btn">解答</button>
+    <button type="button" class="btn btn-talk" id="talk-btn">相談</button>
+    </div>
   </form>
 
 
@@ -382,7 +540,19 @@
 
     let myName = loadMyName();
     nameInput.value = myName;
+    const settingsDetails = document.getElementById("settings-details");
+    const howtoDetails = document.getElementById("howto-details");
+    const summaryRoomSpan = document.getElementById("summary-room-id");
+    const summaryNameSpan = document.getElementById("summary-name");
 
+    // 部屋IDを summary に反映
+    summaryRoomSpan.textContent = roomId;
+
+    // 名前も初期値を反映
+    summaryNameSpan.textContent = myName;
+
+
+// ここより後ろで nameSaveBtn のイベントを登録する
     nameSaveBtn.addEventListener("click", () => {
       const val = nameInput.value.trim();
       if (!val) {
@@ -392,7 +562,23 @@
       myName = val;
       localStorage.setItem(LOCAL_STORAGE_KEY, myName);
       alert("名前を「" + myName + "」に設定しました。");
+
+      // 追加：summary 表示も更新
+      summaryNameSpan.textContent = myName;
+
     });
+
+
+// 画面幅に関係なく、初期状態は両方とも閉じる
+function setupDetailsOpenState() {
+  settingsDetails.open = false;
+  howtoDetails.open = false;
+}
+
+    setupDetailsOpenState();
+
+
+
 
     // ==== エラーメッセージ表示/非表示 ==== 
     function showError(message) {
@@ -688,7 +874,5 @@
   </script>
 </body>
 </html>
-
-
 
 
