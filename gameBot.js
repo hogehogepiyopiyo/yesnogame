@@ -275,8 +275,8 @@ export async function chatWithGameMaster(sessionId, userText, kind = "question")
     ];
 
     const initRes = await client.chat.completions.create({
-      // Groq の Llama 3.1 8B チャットモデル（日本語も対応）
-      model: "llama-3.3-70b-versatile",
+      // Groq の  チャットモデル（日本語も対応）
+      model: "qwen/qwen3-32b",
       messages: initialMessages,
     });
 
@@ -298,7 +298,7 @@ export async function chatWithGameMaster(sessionId, userText, kind = "question")
   messages.push({ role: "user", content });
 
   const res = await client.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "qwen/qwen3-32b",
     messages,
   });
 
