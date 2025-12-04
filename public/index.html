@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yes/No クイズ</title>
   <style>
+    html,
+    body {
+      height: 100%;
+    }
+
     body {
       font-family: system-ui, sans-serif;
       max-width: 800px;
@@ -12,6 +17,7 @@
       padding: 0 10px;
       background: #ffffff;
     }
+
     h1 {
       text-align: center;
       margin: 6px 0 10px;
@@ -43,6 +49,13 @@
       width: 200px;
       max-width: 100%;
     }
+
+    /* PC デフォルトでは #page は普通のブロック要素 */
+    #page {
+      /* min-height や flex は付けない */
+    }
+
+    /* PC デフォルトでは高さ 400px のチャット領域 */
     #log {
       border: 1px solid #ccc;
       padding: 10px;
@@ -53,6 +66,7 @@
       white-space: pre-wrap;
       border-radius: 6px;
     }
+
     #log-toolbar {
       display: flex;
       flex-direction: column;   /* 縦並びにする */
@@ -175,27 +189,41 @@
       margin-right: 6px;
     }
 
-    /* ===== スマホ向けレイアウト（幅600px以下） ===== */
+     /* ===== スマホ向けレイアウト（幅600px以下） ===== */
     @media (max-width: 600px) {
       body {
-        padding: 6px;
+        padding: 4px 6px;
         margin: 0 auto;
         font-size: 14px;
       }
+
       h1 {
-        font-size: 1.3rem;
-        margin: 4px 0 8px;
+        font-size: 1.2rem;
+        margin: 4px 0 4px;
       }
+
       #room-info,
       #name-area {
         font-size: 0.8rem;
-        padding: 6px;
-        margin-bottom: 8px;
+        padding: 4px 6px;
+        margin-bottom: 6px;
       }
+
+      /* スマホのときだけ、ページ全体を縦方向 flex にする */
+      #page {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ログは「余った高さ全部」を使う。PC の height:400px を上書き */
       #log {
-        height: 55vh;  /* 画面高さの半分ちょっとをチャットに */
+        flex: 1;
+        min-height: 0;
+        height: auto;
         font-size: 0.9rem;
       }
+
       #form {
         flex-direction: column;
         align-items: stretch;
@@ -203,22 +231,34 @@
         position: sticky;
         bottom: 0;
         background: #ffffff;
-        padding-top: 4px;
+        padding: 4px 4px 6px;
+        box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.06); /* 上側にごく薄い影 */
       }
+
       #input {
         width: 100%;
       }
+
       .btn {
         width: 100%;
         text-align: center;
         font-size: 0.95rem;
         padding: 10px 12px;
       }
+
       #log-toolbar {
         align-items: flex-end;
         font-size: 0.8rem;
       }
+
+      #log-toolbar small {
+        display: none;
+      }
     }
+
+
+
+
   </style>
 </head>
 
@@ -231,6 +271,9 @@
     <strong>エラー</strong><span id="error-message"></span>
   </div>
 
+
+  <!-- ここからpageで囲む -->
+  <div id="page">
 
   <div id="room-info">
     <div>部屋ID: <strong id="room-id"></strong></div>
@@ -270,6 +313,10 @@
     <button type="button" class="btn btn-answer" id="answer-btn">解答を送信</button>
     <button type="button" class="btn btn-talk" id="talk-btn">相談チャット</button>
   </form>
+
+
+  </div>
+  <!-- ここまでを page で囲む -->
 
   <script>
     const log = document.getElementById("log");
@@ -641,5 +688,7 @@
   </script>
 </body>
 </html>
+
+
 
 
