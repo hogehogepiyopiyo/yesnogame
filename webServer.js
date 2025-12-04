@@ -38,8 +38,6 @@ app.get("/api/model", (req, res) => {
 });
 
 
-
-
 // チャット送信用API
 app.post("/api/chat", async (req, res) => {
   try {
@@ -54,7 +52,7 @@ app.post("/api/chat", async (req, res) => {
     const userName =
       name && String(name).trim() ? String(name).trim() : "名無し";
 
-    // kind の正規化（question / answer / free）
+    // kind を正規化："question" | "answer" | "free"
     let msgKind;
     if (kind === "answer") {
       msgKind = "answer";
@@ -67,21 +65,22 @@ app.post("/api/chat", async (req, res) => {
     // この部屋のログを取得
     const logs = getRoomLog(sid);
 
-    // 1. ユーザーの発言をログに追加
+    // 1. ユーザーの発言をログに追加（相談チャットも同じログに積む）
     logs.push({
       type: "user",
       name: userName,
       text: message,
-      kind: msgKind,
+      kind: msgKind,          // ★ ここで kind を保存
       timestamp: Date.now(),
     });
 
-    // 2. 「相談チャット」の場合は GPT には送らず、ここで終了
+    // 2. kind==="free" の場合は GPT に送らずここで終了
     if (msgKind === "free") {
-      return res.json({ sessionId: sid });
+      // GPT を呼ばないので reply は null で返す
+      return res.json({ reply: null, sessionId: sid });
     }
 
-    // 3. GPTに問い合わせ（質問か解答かを渡す）
+    // 3. 質問/回答は GPT へ問い合わせ
     const reply = await chatWithGameMaster(sid, message, msgKind);
 
     // 4. GPTの返答をログに追加
@@ -92,42 +91,22 @@ app.post("/api/chat", async (req, res) => {
       timestamp: Date.now(),
     });
 
+
     // レスポンス（必要最低限）
     res.json({ reply, sessionId: sid });
   } catch (err) {
-    console.error("サーバーでエラー発生 ----------------------");
+    console.error("サーバーでエラー発生:", err);
 
     let statusCode = 500;
     let clientErrorCode = "server_error";
     let clientMessage = "サーバー側でエラーが発生しました。";
 
-    if (err instanceof Error) {
-      console.error("エラーメッセージ:", err.message);
-      console.error("スタックトレース:", err.stack);
-
-      // Groq のレートリミット（429）を検出
-      if (err.message.includes("Rate limit reached")) {
-        statusCode = 429;
-        clientErrorCode = "rate_limit";
-        clientMessage =
-          "現在、外部AIサービスの利用上限に達しています。しばらく時間をおいてから再度お試しください。";
-      }
-    } else {
-      console.error("Error オブジェクトではない値:", err);
+    if (err instanceof Error && err.message.includes("Rate limit reached")) {
+      statusCode = 429;
+      clientErrorCode = "rate_limit";
+      clientMessage =
+        "現在、外部AIサービスの利用上限に達しています。しばらく時間をおいてから再度お試しください。";
     }
-
-    if (err && err.response) {
-      try {
-        console.error("HTTPステータス:", err.response.status);
-        console.error("レスポンスヘッダ:", err.response.headers);
-        console.error("レスポンスボディ:", err.response.data);
-      } catch (e) {
-        console.error("err.response のログ出力中にエラー:", e);
-      }
-    }
-
-    console.error("リクエストボディ:", req.body);
-    console.error("------------------------------------------");
 
     res.status(statusCode).json({
       error: clientErrorCode,
@@ -135,6 +114,8 @@ app.post("/api/chat", async (req, res) => {
     });
   }
 });
+
+
 
 // 部屋ごとのチャットログを取得するAPI
 app.get("/api/log", (req, res) => {
