@@ -373,7 +373,6 @@
   <h1>Yes/No クイズ</h1>
 
 
-
   <!-- エラーメッセージ表示用 -->
   <div id="error-banner">
     <strong>エラー</strong><span id="error-message"></span>
@@ -436,9 +435,9 @@
       <li>「質問」ボタン：はい/いいえで答えられる質問を送信</li>
       <li>「解答」ボタン：正解だと思う単語を送信</li>
       <li>「相談」ボタン：同じ部屋の参加者だけでチャットしたいときに使用<br>
-        <small>（相談ボタンで送信した内容は、GPTは無視します）</small>
+        <small>（相談ボタンで送信した内容は、AIは無視します）</small>
       </li>
-      <!-- <li>MVP / POINT：GPTが特に良かった質問やポイントをタグ付きで表示します。</li> -->
+      <!-- <li>MVP / POINT：AIが特に良かった質問やポイントをタグ付きで表示します。</li> -->
     </ul>
 
     <p><strong>▼ AIに質問するときのヒント</strong></p>
@@ -473,17 +472,6 @@
         「架空のキャラクターですか？」のように、別の角度から聞き直してみる。</small>
       </li>
     </ul>
-
-<p id="uma">🐎 うまぴょいモードのコツ</p>
-
-
-    <ul>
-      <li>ウマ娘に実装されているキャラクターのモデルとなった競走馬のみ出題されます。</li>
-      <li> ウマ娘のキャラクターに基づいた質問もOK<br>
-        <small>OK：公式プロフィールレベルの一般的に知られている設定<br>
-	NG：二次創作的イメージ・特定イベント・スキル構成などの詳細な情報</small></li>
-	<li>ウマ娘／競走馬のどちらを指しているか、AIがわかりやすいように記載する<br>
-<small>「オルフェーヴル（ウマ娘）」「オルフェーヴル（競走馬）」といった記載がおすすめ</small></li>
   </div>
 </details>
   </div>
@@ -505,10 +493,9 @@
     <button type="button" class="btn btn-talk" id="talk-btn">相談</button>
     </div>
   </form>
+
+
   </div>
-
-
-  
   <!-- ここまでを page で囲む -->
 
   <script>
@@ -629,26 +616,23 @@ function setupDetailsOpenState() {
       errorMessageSpan.textContent = "";
     }
 
-    // ==== 初期のGPTメッセージ（固定文言） ====
-function renderInitialThemeMessage() {
-  log.innerHTML = "";
-  const div = document.createElement("div");
-  div.classList.add("msg", "msg-bot");
+    // ==== 初期のAIメッセージ（固定文言） ====
+    function renderInitialThemeMessage() {
+      log.innerHTML = "";
+      const div = document.createElement("div");
+      div.classList.add("msg", "msg-bot");
+      div.textContent =
+        "どのテーマで遊びますか？\n\n" +
+        "1: 国連加盟国の国名\n" +
+        "2: 日本のG1出走経験がある競走馬名\n" +
+        "3: 日本の中央重賞出走経験がある競走馬名\n\n" +
+        "遊びたいテーマの番号を送信してください。";
+      log.appendChild(div);
+      // 初回だけは一番下にスクロール
+      log.scrollTop = log.scrollHeight;
+    }
 
-  div.innerHTML =
-    "どのテーマで遊びますか？<br><br>" +
-    "1: 国連加盟国の国名<br>" +
-    "2: 日本のG1出走経験がある競走馬名<br>" +
-    "3: 日本の中央重賞出走経験がある競走馬名<br>" +
-    "4: うまぴょいモード（<a href=\"#uma\">ルールを確認</a>）<br><br>" +
-    "遊びたいテーマの番号を送信してください。";
-
-  log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
-}
-
-
-    // ==== GPTからの <think> ブロックを除去 ====
+    // ==== AIからの <think> ブロックを除去 ====
     function stripThinkTags(text) {
       if (!text) return "";
       return text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
@@ -662,7 +646,7 @@ function renderInitialThemeMessage() {
     }
 
 
-    // ==== GPTメッセージ整形（MVP / POINT をアイコン風に） ====
+    // ==== AIメッセージ整形（MVP / POINT をアイコン風に） ====
     function escapeHtml(str) {
       return str
         .replace(/&/g, "&amp;")
@@ -720,11 +704,11 @@ function renderInitialThemeMessage() {
         const div = document.createElement("div");
         div.classList.add("msg");
 
-        if (msg.type === "gpt") {
-          // GPTのメッセージ
+        if (msg.type === "ai") {
+          // AIのメッセージ
           div.classList.add("msg-bot");
           div.innerHTML =
-            '<div class="bot-name">GPT</div>' +
+            '<div class="bot-name">AI</div>' +
             '<div class="bot-body">' +
             formatBotMessage(msg.text) +
             "</div>";
@@ -878,7 +862,7 @@ function renderInitialThemeMessage() {
       sendToServer(text, "answer");
     });
 
-    // ボタン: 相談チャット（GPTには送らない）
+    // ボタン: 相談チャット（AIには送らない）
     talkBtn.addEventListener("click", () => {
       const text = input.value.trim();
       if (!text) return;
@@ -957,14 +941,4 @@ function renderInitialThemeMessage() {
 
   </script>
 </body>
-
-         <footer>
-
-       <small>このサイトは「ウマ娘 プリティーダービー」の二次創作サイトです。<br>
-株式会社Cygamesとは一切関係ございません。<small>
-  </footer>
-
 </html>
-
-
-

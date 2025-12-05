@@ -1,18 +1,18 @@
-import Groq from "groq-sdk";
+// === Google Gemini 用 gameBot.js（丸ごとコピペしてください） ===
+
 import dotenv from "dotenv";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 dotenv.config();
 
-// Groq クライアントを初期化
-const client = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+// ★ ここで使うモデル名（必要に応じて "gemini-2.5-flash-lite" などに変更可）
+export const MODEL = "gemini-2.5-flash";
 
-//export 付
-export const MODEL = "qwen/qwen3-32b";
+// ★ GEMINI_API_KEY は .env に設定しておくこと
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: MODEL });
 
-
-// ★ ここがゲームのルール（SYSTEM_PROMPT）
+// ★ ここがゲームのルール（SYSTEM_PROMPT：元ファイルと同じ）
 const SYSTEM_PROMPT = String.raw`
 # あなたの役割
 
@@ -48,11 +48,6 @@ const SYSTEM_PROMPT = String.raw`
   - 解答候補: そのような中央重賞出走経験のある馬の正式名称。
   - 解答入力例: 「メジロマックイーン」「サイレンススズカ」「カレンチャン」「ステイゴールド」など。
 
-(4) うまぴょいモード
-  - 対象: ウマ娘プリティーダービーに実装されているキャラクターのモデルとなった競走馬名。
-  - 解答候補: ウマ娘プリティーダービーのアプリゲーム、アニメ、漫画に登場したキャラクターの、モデルとなった競走馬の正式名称。
-  - 解答入力例: 「オルフェーヴル」「ドリームジャーニー」「セイウンスカイ」「フサイチパンドラ」「スティルインラブ」など。
-
 ================================
 ■ テーマ選択のルール（重要）
 ================================
@@ -72,13 +67,6 @@ const SYSTEM_PROMPT = String.raw`
 
   テーマは『日本のG1出走経験がある競走馬名』ですね。
   はい/いいえで答えられる質問をしてください。
-
-  例:
-  「4」が送られてきた場合のあなたの返答は、次のようにする：
-
-  テーマは『うまぴょいモード』ですね。
-  はい/いいえで答えられる質問をしてください。
-
 
 - 以降、プレイヤーからのメッセージが「質問」や「解答」であれば、後述のルールに従って処理する。
 
@@ -142,8 +130,6 @@ const SYSTEM_PROMPT = String.raw`
   - テーマ (1): 国連加盟国の国名になっていそうな文字列。
   - テーマ (2): 日本の中央競馬（JRA）のG1競走に出走したことがある競走馬の名前として自然な文字列。
   - テーマ (3): 日本の中央競馬（JRA）の重賞競走（G1・G2・G3）に出走したことがある競走馬の名前として自然な文字列。
-  - テーマ (4): ウマ娘プリティーダービーの元ネタになっている実在競走馬として
-    自然な文字列。
 - 「解答」とみなすメッセージに対しては、残りターン数を減らさない。（解答は質問ではないため）
 
 ● 解答が正解だった場合
@@ -174,6 +160,30 @@ const SYSTEM_PROMPT = String.raw`
 
 - これまでの yes/no と矛盾しないヒントにすること。
 - その後、プレイヤーに再度質問を促し、質問フェーズを続ける。
+
+================================
+■ プレイヤー入力のラベルについて
+================================
+
+- クライアントの都合により、プレイヤーのメッセージには次のいずれかのラベルが先頭に自動付与される。
+
+  - 「【質問】」
+  - 「【解答】」
+
+- あなたは、このラベルを使って必ず入力の種類を判定すること。
+
+  - メッセージが「【質問】」で始まる場合：
+    - そのメッセージは「質問」である。残りターン数を1減らし、「はい」「いいえ」「回答不能」で答える。
+    - 実際の質問文はラベルを取り除いたあとの部分として扱う。
+
+  - メッセージが「【解答】」で始まる場合：
+    - そのメッセージは「解答（プレイヤーが答えだと思う名前の宣言）」である。
+    - 残りターン数は減らさない。
+    - ラベル以降の文字列を、テーマに応じた「名前」とみなして、正解かどうかを判定する。
+    - 絶対に「回答: はい／いいえ」といった形式で返してはならない。必ず「正解」「不正解」のフォーマットを使う。
+
+- ラベルが付いている場合は、「名前だけ」の条件はラベルを除いた部分に対して適用すること。
+
 
 ================================
 ■ 10ターン使い切った場合（MVP / POINT 表示）
@@ -250,47 +260,26 @@ const SYSTEM_PROMPT = String.raw`
 - 特に日本の中央競馬（JRA）のレースに出走歴がある馬から選ぶ。
 - テーマ(2)の「G1」レース、テーマ(3)の「中央重賞（G1～G3）」は、1984年にJRAがグレード制を導入後のレースを指すものとする。
 - テーマ (2) は「G1出走馬」に限定するため、「正解」として選定した競走馬のG1レース出走歴と、該当レースの着順について、客観的な事実に基づいて回答する。
-- テーマ (3) は「中央重賞（G1〜G3）出走馬」全体から選ぶが、あまりにもマイナーすぎる馬は避け、
-  一般の競馬ファンが連想できそうなレベルの馬から選ぶ。
+- テーマ (3) は「中央重賞（G1〜G3）出走馬」全体から選ぶが、あまりにもマイナーすぎる馬は避け、一般の競馬ファンが連想できそうなレベルの馬から選ぶ。
+
+- テーマ (2) および (3) に関する注意:
+
+  - 競走馬の性別、戦績（どのG1を何勝したか、海外遠征の有無など）は、モデルにとって誤りが生じやすい情報である。
+  - あなたが答えようとしている事実について、自信が 90% 以上持てない場合は、推測で断定してはならない。
+  - その場合は、必ず
+
+    残りターン数: X
+    回答: 回答不能
+    補足: 〜〜〜
+
+    の形式で「回答不能」と答えること。
+
 - 競走馬に関する yes/no を答えるとき、特に以下の重要な事実について、推測での断定は禁止する。必ず情報を確認し、整合性をとってから回答する。
   - 三冠馬かどうか
   - G1勝利数の有無や規模
   - 有馬記念・皐月賞・東京優駿・菊花賞など代表的なレースの勝利の有無
   - 凱旋門賞など代表的な海外G1への出走経験の有無
-- これらについて自信が持てない場合は、「回答: 回答不能」とし、
-  補足で「この点については私には判断できません」と簡潔に述べる。
-
-● ウマ娘プリティーダービーの元となった競走馬名当て（テーマ4）
--  回答の基準はあくまで「元となった実在の競走馬」と、
-  「ウマ娘公式プロフィールレベルの一般的に知られている設定」に限る。
--  ゲーム内の細かいイベントの有無（温泉イベント、限定シナリオなど）や、
-   詳細なステータス・スキル構成など、マニアックな情報について
-   自信が持てない場合は必ず「回答不能」とする。
--  「このキャラはもう実装されていますか？」「いつ実装されましたか？」といった
-     実装時期に関する質問にも、確信がなければ「回答不能」とする。
-- キャラクター名で質問された場合（例: 「スペシャルウィーク（ウマ娘）は明るい性格ですか？」）も、
-  あなたの判断基準は
-  「実在の競走馬の情報」と「公式プロフィールレベルのキャラクター設定」に限定し、
-  あいまいな二次創作的イメージでは回答しない。
--  未実装・噂レベル・将来実装されるかもしれない候補を答えとして選んではならない。
--  実在の競走馬に関する客観的事実**（生年・性別・主なレース実績など）は、
-   自信のある範囲でのみ「はい／いいえ」で回答する。推測での断定は禁止する。
-   自信がなければ推測せず「回答不能」と回答する。
--  ウマ娘キャラクター側の情報**（公式プロフィール・代表的な性格付けなど）も、
-   公式または広く知られている事実に限って「はい／いいえ」で回答する。
-   ゲーム内イベントや細かいシナリオ内容など、自信が持てない情報については
-   必ず「回答不能」と回答する。
-- 特に次のような情報は、たとえ質問されても、推測で「はい／いいえ」と答えることを禁止する。
-  - どのキャラクターがゲーム／アプリに実装済みかどうか
-  - 温泉イベントなど特定イベントの有無
-  - 詳細なゲーム内ステータスやスキル構成
-- 質問文の中で、
-「スペシャルウィーク（ウマ娘のキャラクター）」のようにキャラの名前で聞かれた場合も、
-    回答の判断はあくまで「元となった実在競走馬」と「ウマ娘のキャラクターとしての公式プロフィールレベルの設定」を基準にする。
-- 実在競走馬とキャラクター名が同じ場合（例：スペシャルウィーク）は、
-  ユーザーの意図として「キャラ／馬のどちらを指しているか」が曖昧なとき、
-  無理に推測せず、必要であれば「回答不能」を選択する。
-
+- これらについて自信が持てない場合は、「回答: 回答不能」とし、補足で「この点については私には判断できません」と簡潔に述べる。
 
 ================================
 ■ その他のルール
@@ -301,8 +290,7 @@ const SYSTEM_PROMPT = String.raw`
   (1) 国連加盟国の国名
   (2) 日本のG1出走経験がある競走馬名
   (3) 日本の中央重賞出走経験がある競走馬名
-  (4) ウマ娘プリティーダービーの元となった競走馬名
-  の4種類のみとする。
+  の3種類のみとする。
 - 秘密の答えは、そのゲームが終了するまで絶対に出力しない。
 - 「MVP」を選ぶときは、「情報量」「候補をどれだけ絞れるか」「切り口の鋭さ」を基準に主観的に1つ選ぶ。
 - プレイヤー同士が相談するための「相談チャット」メッセージは、あなたには送られない。
@@ -310,29 +298,9 @@ const SYSTEM_PROMPT = String.raw`
   ゲーム進行に直接関わる内容のみである。
   したがって、相談内容に言及したり、「さっき皆さんが相談していたように」などと、
   プレイヤー同士の会話を見ていたかのように振る舞ってはいけない。
-
-======================
-■ マルチユーザー（グループチャット）対応
-======================
-- ユーザー名（例: 「ゲスト364:」）がメッセージ先頭に付いていても、
-  その行は1人のプレイヤーからの発言とみなし、ゲームは単一の進行として扱う。
-- 発言者が途中で変わっても、同じセッションIDの間は同一ゲームとして扱う。
-- 返答にユーザー名を含める必要はない。常にゲームマスターとしての返答のみを行う。
-
-======================
-■ 出力スタイルに関する注意
-======================
-- あなたの出力は、常に「ゲームの進行に必要なテキスト」に限定する。
-- コードブロック（\`\`\`）や、Markdown の見出し記号（#）などは使わない。
-- システムプロンプトの説明文を繰り返したり、「私はAIモデルです」などの
-  メタな発言を行ってはならない。
-- 日本語で返答すること。英語が含まれても構わないが、基本は日本語を優先する。
-
-以上のルールに従い、「Yes/No マルチテーママスター」としてゲームを進行してください。
 `;
 
-
-// セッションごとに会話履歴を保存（サーバー起動中のみ保持する簡易版）
+// ★ セッションごとに会話履歴を保存（サーバー起動中のみ保持する簡易版）
 const sessions = new Map();
 
 /**
@@ -341,6 +309,40 @@ const sessions = new Map();
 function stripThinkTags(text) {
   if (!text) return "";
   return text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+}
+
+/**
+ * OpenAI/Groq 風の messages 配列を
+ * Gemini の contents 配列に変換するユーティリティ
+ *
+ * messages: [{ role: "user"|"assistant", content: string }, ...]
+ */
+function toGeminiContents(messages) {
+  const contents = [];
+
+  // ★ 毎回、先頭に SYSTEM_PROMPT を渡す（Gemini には system ロールがないため）
+  contents.push({
+    role: "user",
+    parts: [{ text: SYSTEM_PROMPT }],
+  });
+
+  for (const m of messages) {
+    if (!m || !m.role) continue;
+
+    if (m.role === "user") {
+      contents.push({
+        role: "user",
+        parts: [{ text: m.content ?? "" }],
+      });
+    } else if (m.role === "assistant") {
+      contents.push({
+        role: "model",
+        parts: [{ text: m.content ?? "" }],
+      });
+    }
+  }
+
+  return contents;
 }
 
 /**
@@ -353,22 +355,25 @@ export async function chatWithGameMaster(
   userText,
   kind = "question"
 ) {
-  // 初回はゲーム開始の説明から
+  // ★ 初回は「ゲームを開始してください。」から
   if (!sessions.has(sessionId)) {
-    const initialMessages = [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: "ゲームを開始してください。" },
-    ];
+    const initialMessages = [];
 
-    const initRes = await client.chat.completions.create({
-      model: MODEL,
-      messages: initialMessages,
+    // 最初のユーザーメッセージ
+    initialMessages.push({
+      role: "user",
+      content: "ゲームを開始してください。",
     });
 
-    const initReply = initRes.choices[0].message;
-    const cleanedInitContent = stripThinkTags(initReply.content || "");
+    // Gemini 用の contents に変換して呼び出し
+    const initContents = toGeminiContents(initialMessages);
+    const initRes = await model.generateContent({ contents: initContents });
+
+    const initText = initRes.response.text() || "";
+    const cleanedInitContent = stripThinkTags(initText);
+
     const cleanedInitReply = {
-      ...initReply,
+      role: "assistant",
       content: cleanedInitContent,
     };
 
@@ -378,25 +383,25 @@ export async function chatWithGameMaster(
 
   const messages = sessions.get(sessionId);
 
-  // 質問か解答かでラベルを付ける
+  // ★ 質問か解答かでラベルを付ける
   let content = userText;
   if (kind === "answer") {
-    content = `【これはプレイヤーの解答です】${userText}`;
+    content = `【解答】${userText}`;
   } else if (kind === "question") {
-    content = `【これはプレイヤーの質問です】${userText}`;
+    content = `【質問】${userText}`;
   }
 
   messages.push({ role: "user", content });
 
-  const res = await client.chat.completions.create({
-    model: MODEL,
-    messages,
-  });
+  // Gemini 用の contents に変換して呼び出し
+  const contents = toGeminiContents(messages);
+  const res = await model.generateContent({ contents });
 
-  const reply = res.choices[0].message;
-  const cleanedContent = stripThinkTags(reply.content || "");
+  const replyText = res.response.text() || "";
+  const cleanedContent = stripThinkTags(replyText);
+
   const assistantMessage = {
-    ...reply,
+    role: "assistant",
     content: cleanedContent,
   };
 
@@ -404,8 +409,4 @@ export async function chatWithGameMaster(
 
   return cleanedContent;
 }
-
-
-
-
 

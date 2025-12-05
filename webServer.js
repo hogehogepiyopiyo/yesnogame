@@ -17,7 +17,7 @@ app.use(express.static("public"));
 
 /**
  * 部屋ごとのチャットログ
- * roomId(=sessionId) -> [{ type: "user"|"gpt", name: "名前", text: "本文", kind?: "question"|"answer"|"free", timestamp: number }, ...]
+ * roomId(=sessionId) -> [{ type: "user"|"ai", name: "名前", text: "本文", kind?: "question"|"answer"|"free", timestamp: number }, ...]
  */
 const roomLogs = new Map();
 
@@ -74,19 +74,19 @@ app.post("/api/chat", async (req, res) => {
       timestamp: Date.now(),
     });
 
-    // 2. kind==="free" の場合は GPT に送らずここで終了
+    // 2. kind==="free" の場合は AI に送らずここで終了
     if (msgKind === "free") {
-      // GPT を呼ばないので reply は null で返す
+      // AI を呼ばないので reply は null で返す
       return res.json({ reply: null, sessionId: sid });
     }
 
-    // 3. 質問/回答は GPT へ問い合わせ
+    // 3. 質問/回答は AI へ問い合わせ
     const reply = await chatWithGameMaster(sid, message, msgKind);
 
-    // 4. GPTの返答をログに追加
+    // 4. AIの返答をログに追加
     logs.push({
-      type: "gpt",
-      name: "GPT",
+      type: "ai",
+      name: "AI",
       text: reply,
       timestamp: Date.now(),
     });
