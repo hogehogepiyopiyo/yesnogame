@@ -17,7 +17,7 @@ if (!apiKey) {
 }
 
 // フロントから /api/model で表示する用
-export const MODEL = "gemini-2.5-flash-lite";
+export const MODEL = "gemini-2.5-flash";
 
 // Gemini のクライアントとモデルを初期化
 const genAI = new GoogleGenerativeAI(apiKey);
