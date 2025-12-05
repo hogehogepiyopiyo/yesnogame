@@ -1,3 +1,9 @@
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey) {
+  console.error("GEMINI_API_KEY is not set");
+}
+
+
 // === Google Gemini 用 gameBot.js（丸ごとコピペしてください） ===
 
 import dotenv from "dotenv";
