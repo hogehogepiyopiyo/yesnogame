@@ -1,60 +1,29 @@
-// === Google Gemini 用 gameBot.js（丸ごとコピペしてください） ===
+// gameBot.js（Gemini版 完成形）
 
-import dotenv from "dotenv";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import dotenv from "dotenv";
 
 dotenv.config();
 
-// ===============================
-// <think> 対策用クリーニング関数
-// ===============================
-/**
- * モデル出力から <think> に関する内容を除去する
- * - <think>〜</think> のペア → その部分を丸ごと削除
- * - </think> だけがある場合 → 最初の </think> 以降を切り捨て
- * - 最後に念のため <think> / </think> を文字だけ消す
- */
-function stripThinkTags(rawText) {
-  if (!rawText) return rawText;
+// ==== Gemini クライアントの初期化 ====
 
-  let text = rawText;
-
-  // パターン1: <think>〜</think> がある場合 → 丸ごと削除
-  const withPairRemoved = text.replace(/<think>[\s\S]*?<\/think>/g, "");
-  if (withPairRemoved !== text) {
-    text = withPairRemoved.trim();
-  } else if (text.includes("</think>")) {
-    // パターン2: </think> だけが生えているケース
-    // 例: "不正解\nヒント: ...</think>ユーザーは〜</think>"
-    const firstEndIndex = text.indexOf("</think>");
-    if (firstEndIndex !== -1) {
-      text = text.slice(0, firstEndIndex).trim();
-    }
-  }
-
-  // 念のため、残っているタグもすべて削除
-  text = text.replace(/<\/?think>/g, "").trim();
-
-  return text;
-}
-
-// ===============================
-// Gemini 初期化
-// ===============================
-
-// ★ ここで使うモデル名（必要に応じて "gemini-2.5-flash-lite" などに変更可）
-export const MODEL = "gemini-2.5-flash";
-
-// ★ GEMINI_API_KEY は .env に設定しておくこと
+// .env に書いた GEMINI_API_KEY を読み込む
 const apiKey = process.env.GEMINI_API_KEY;
+
 if (!apiKey) {
-  console.error("GEMINI_API_KEY is not set");
+  console.error(
+    "GEMINI_API_KEY が設定されていません。.env か Render の Environment を確認してください。"
+  );
 }
 
+// フロントから /api/model で表示する用
+export const MODEL = "gemini-2.5-flash-lite";
+
+// Gemini のクライアントとモデルを初期化
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: MODEL });
 
-// ★ ここがゲームのルール（SYSTEM_PROMPT：元ファイルと同じ）
+// ★ ここがゲームのルール（SYSTEM_PROMPT）
 const SYSTEM_PROMPT = String.raw`
 # あなたの役割
 
@@ -72,157 +41,163 @@ const SYSTEM_PROMPT = String.raw`
 - あなたは、毎ゲームごとに「テーマ」と「答え」を選び、ユーザーの質問に「はい / いいえ」で答えながら進行する。
 
 ================================
-■ テーマの種類
+■ テーマと答えのルール
 ================================
-ゲーム開始時、プレイヤーは次の3つの「テーマ」から1つを選ぶ。
 
-(1) 国連加盟国の国名
-  - 解答候補: 国連加盟国193カ国のうち1つ。
-  - 解答入力例: 「日本」「France」「United States of America」など。
+- 各ゲーム開始時、プレイヤーから「テーマ番号」（1, 2, 3 のいずれか）が送られてくる。
+- テーマ番号ごとに、あなたが秘密裏に「答え」を1つだけ選ぶ。
 
-(2) 日本のG1出走経験がある競走馬名
-  - 対象: 日本の中央競馬（JRA）のG1競走に出走したことがある実在のサラブレッド競走馬。
-  - 解答候補: そのようなG1出走経験のある馬の正式名称。
-  - 解答入力例: 「ディープインパクト」「オグリキャップ」「ナリタブライアン」「ジェンティルドンナ」など。
+  1: 国連加盟国の国名
+      - 現在の国連加盟193カ国のうちの1つ。
+      - 歴史上の旧国名や、未承認国家、消滅した国家などは含めない。
 
-(3) 日本の中央重賞出走経験がある競走馬名
-  - 対象: 日本の中央競馬（JRA）の重賞競走（G1・G2・G3）に出走したことがある実在のサラブレッド競走馬。
-  - 解答候補: そのような中央重賞出走経験のある馬の正式名称。
-  - 解答入力例: 「メジロマックイーン」「サイレンススズカ」「カレンチャン」「ステイゴールド」など。
+  2: 日本のG1出走経験がある競走馬名
+      - JRA主催の中央競馬における「G1」競走に、1回でも出走したことがある馬に限定。
+      - 海外G1のみ出走、日本国内ではG2以下の馬は含めない。
+      - 馬名の表記は、JRA公式の表記に準拠する（アルファベットやカタカナなど）。
+  
+  3: 日本の中央重賞出走経験がある競走馬名
+      - JRA主催の中央競馬の重賞（G1, G2, G3, JPN 指定重賞を含む）に1回でも出走したことがある馬。
+      - OP特別のみ出走で、重賞出走歴がない馬は含めない。
+      - 馬名の表記は、JRA公式の表記に準拠する。
+
+- あなたはゲーム開始時に、テーマ番号に応じた適切な「答え」を1つ選び、そのゲームの間ずっと固定する。
+- ゲームの途中で、答えを変更してはならない。
 
 ================================
-■ テーマ選択のルール（重要）
+■ ゲームの進行
 ================================
-- 各ゲームで「まだテーマが決まっていない状態」のとき、プレイヤーが送ってくる最初のメッセージは、通常「1」「2」「3」などのテーマ番号である。
-- あなたは、その番号からテーマを特定し、そのゲームのテーマを確定させる。
-- この「テーマ番号」に対するあなたの返答は、「yes/no の回答」ではない。したがって、
-  - 残りターン数を減らしてはいけない。
-  - 「残りターン数: ～」や「回答: はい／いいえ」といった行を出力してはいけない。
 
-- テーマ番号に対する最初の返答は、必ず次の2行だけにすること（余計な文を足してはいけない）：
-
-  テーマは『[テーマ名]』ですね。
-  はい/いいえで答えられる質問をしてください。
-
+- プレイヤーは、はい/いいえで答えられる質問を順番に投げてくる。
+- あなたは、各質問に対して「はい」「いいえ」「どちらとも言えない」「回答不能」のいずれかで答える。
+- 「どちらとも言えない」「回答不能」を使うのは、情報が曖昧な場合や、質問が不適切な場合に限る。
   例:
-  「2」が送られてきた場合のあなたの返答は、次のようにする：
+  - 定義が曖昧な形容詞（「有名ですか？」「強い馬ですか？」）
+  - モデルの知識が不十分な場合
+- ただし、可能な範囲で yes/no 質問として解釈し、誠実に回答するように努める。
 
-  テーマは『日本のG1出走経験がある競走馬名』ですね。
-  はい/いいえで答えられる質問をしてください。
-
-- 以降、プレイヤーからのメッセージが「質問」や「解答」であれば、後述のルールに従って処理する。
-
-（※ 以下、元の SYSTEM_PROMPT と同じ内容をそのまま残す ※）
+- プレイヤーは最大10ターンまで質問できる。
+- ターン数は、「yes/noで答えた回数」をカウントする。解答宣言はターン数に含めない。
 
 ================================
-■ 質問フェーズ（最大10ターン）
+■ 回答フォーマットの厳密なルール
 ================================
-（中略：ご提示のプロンプト全文。ここはそのままでOK）
+
+各質問に対するあなたの返答は、必ず次の形式を守ること。
+
+1. 1行目に「残りターン数: X」
+   - X は残りターン数の整数（10からカウントダウン）
+   - 質問に回答するときだけ減らす（解答宣言では減らさない）。
+
+2. 2行目に「回答: 〜」
+   - 「はい」「いいえ」「どちらとも言えない」「回答不能」のいずれかを、ひらがなで書く。
+   - 例: 「回答: はい」
+
+3. 3行目以降に、必要なら補足説明を数行書いてもよいが、簡潔にする。
+   - 補足説明は任意。
+   - 補足がない場合は、2行目で終了してもよい。
+
+※ index.html 側では、1行目と2行目を前提に表示を行うため、
+   かならずこの順番・形式を崩さないこと。
+
+（中略：ここに元の SYSTEM_PROMPT の残り全体が入っています）
+
+- 現時点では、テーマは
+  (1) 国連加盟国の国名
+  (2) 日本のG1出走経験がある競走馬名
+  (3) 日本の中央重賞出走経験がある競走馬名
+  の3種類のみとする。
+- 秘密の答えは、そのゲームが終了するまで絶対に出力しない。
+- 「MVP」を選ぶときは、「情報量」「候補をどれだけ絞れるか」「切り口の鋭さ」を基準に主観的に1つ選ぶ。
+- プレイヤー同士が相談するための「相談チャット」メッセージは、あなたには送られない。
+  あなたが受け取るユーザーメッセージは、テーマ番号、yes/noで答える質問、解答、ゲーム継続の可否など、
+  ゲーム進行に直接関わる内容のみである。
+  したがって、相談内容に言及したり、「さっき皆さんが相談していたように」などと、
+  プレイヤー同士の会話を見ていたかのように振る舞ってはいけない。
 `;
 
-// ★ セッションごとに会話履歴を保存（サーバー起動中のみ保持する簡易版）
+// ==== セッション管理（サーバー起動中だけ保持） ====
+
+/**
+ * Gemini の会話履歴をセッションごとに保存する簡易 Map
+ * 各要素は Gemini API の contents と同じ形式：
+ *   { role: "user" | "model", parts: [{ text: "..." }] }
+ */
 const sessions = new Map();
 
 /**
- * OpenAI/Groq 風の messages 配列を
- * Gemini の contents 配列に変換するユーティリティ
- *
- * messages: [{ role: "user"|"assistant", content: string }, ...]
+ * LLM の出力から <think>〜</think> を削除するユーティリティ
  */
-function toGeminiContents(messages) {
-  const contents = [];
-
-  // ★ 毎回、先頭に SYSTEM_PROMPT を渡す（Gemini には system ロールがないため）
-  contents.push({
-    role: "user",
-    parts: [{ text: SYSTEM_PROMPT }],
-  });
-
-  for (const m of messages) {
-    if (!m || !m.role) continue;
-
-    if (m.role === "user") {
-      contents.push({
-        role: "user",
-        parts: [{ text: m.content ?? "" }],
-      });
-    } else if (m.role === "assistant") {
-      contents.push({
-        role: "model",
-        parts: [{ text: m.content ?? "" }],
-      });
-    }
-  }
-
-  return contents;
+function stripThinkTags(text) {
+  if (!text) return "";
+  return text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 
 /**
- * sessionId: 部屋ID（例: "room-abc123"）
- * userText: ユーザーからのメッセージ
- * kind: "question" | "answer"
+ * ゲーム本体：LLM とのやり取りを行う関数
+ *
+ * @param {string} sessionId - 部屋ID（例: "room-abc123"）
+ * @param {string} userText  - プレイヤーからのメッセージ（質問 or 解答）
+ * @param {"question"|"answer"|"free"} kind - メッセージの種類
+ * @returns {Promise<string>} - AI からの返答テキスト（<think>削除済み）
  */
 export async function chatWithGameMaster(
   sessionId,
   userText,
   kind = "question"
 ) {
-  // --- 初回セットアップ ---
+  if (!sessionId) {
+    throw new Error("sessionId is required");
+  }
+
+  // 空文字なども一応許容
+  const safeText = userText ?? "";
+
+  // 初回なら空の履歴を作る
   if (!sessions.has(sessionId)) {
-    const initialMessages = [];
-
-    // 最初のユーザーメッセージ
-    initialMessages.push({
-      role: "user",
-      content: "ゲームを開始してください。",
-    });
-
-    // Gemini 用の contents に変換して呼び出し
-    const initContents = toGeminiContents(initialMessages);
-    const initRes = await model.generateContent({ contents: initContents });
-
-    const initRaw = initRes.response.text() || "";
-    const cleanedInitContent = stripThinkTags(initRaw);
-
-    const cleanedInitReply = {
-      role: "assistant",
-      content: cleanedInitContent,
-    };
-
-    initialMessages.push(cleanedInitReply);
-    sessions.set(sessionId, initialMessages);
+    sessions.set(sessionId, []);
   }
 
-  const messages = sessions.get(sessionId);
+  const history = sessions.get(sessionId); // Array<{ role, parts }>
 
-  // --- 質問か解答かでラベル付け ---
-  let content = userText;
+  // 質問 or 解答 でラベルを付与
+  let contentText = safeText;
   if (kind === "answer") {
-    content = `【解答】${userText}`;
+    contentText = `【解答】${safeText}`;
   } else if (kind === "question") {
-    content = `【質問】${userText}`;
+    contentText = `【質問】${safeText}`;
+  } else {
+    // "free" などの場合（通常はサーバー側でAIに送らない想定）
+    contentText = safeText;
   }
 
-  messages.push({ role: "user", content });
+  // 今回のユーザー発話を会話履歴に追加
+  history.push({
+    role: "user",
+    parts: [{ text: contentText }],
+  });
 
-  // --- Gemini 呼び出し ---
-  const contents = toGeminiContents(messages);
-  const res = await model.generateContent({ contents });
+  // Gemini に問い合わせ
+  const result = await model.generateContent({
+    systemInstruction: {
+      role: "system",
+      parts: [{ text: SYSTEM_PROMPT }],
+    },
+    contents: history,
+  });
 
-  const rawReply = res.response.text() || "";
+  const replyText = result.response.text() || "";
+  const cleaned = stripThinkTags(replyText);
 
-  // ★ ここで必ず <think> を除去
-  const cleanedContent = stripThinkTags(rawReply);
+  // AI の返答も履歴に追加
+  history.push({
+    role: "model",
+    parts: [{ text: cleaned }],
+  });
 
-  const assistantMessage = {
-    role: "assistant",
-    content: cleanedContent,
-  };
+  // 更新した履歴を保存
+  sessions.set(sessionId, history);
 
-  // セッションに保存
-  messages.push(assistantMessage);
-  sessions.set(sessionId, messages);
-
-  // ★ 呼び出し元には「cleanedContent」だけ返す
-  return cleanedContent;
+  // フロントにはテキストだけ返す
+  return cleaned;
 }
